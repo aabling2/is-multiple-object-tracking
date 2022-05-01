@@ -3,7 +3,6 @@ import cv2
 import sys
 import argparse
 import numpy as np
-sys.path.append("../deep_sort")
 from application_util import preprocessing
 from deep_sort import nn_matching
 from deep_sort.detection import Detection
@@ -11,8 +10,13 @@ from deep_sort.tracker import Tracker
 
 
 def main(source, nms_max_overlap, max_cosine_distance, nn_budget):
+    # Abre captura de vídeo
     cap = cv2.VideoCapture(source)
+
+    # Objeto de segmentação
     backsub = cv2.createBackgroundSubtractorMOG2()
+
+    # Cria rastreador
     metric = nn_matching.NearestNeighborDistanceMetric(
         "cosine", max_cosine_distance, nn_budget)
     tracker = Tracker(metric)
@@ -23,16 +27,16 @@ def main(source, nms_max_overlap, max_cosine_distance, nn_budget):
         if not ret or frame is None:
             break
 
-        # Segmentation
+        # Segmentação por subtração de fundo
         img = backsub.apply(frame)
         ret, thresh = cv2.threshold(
             img, thresh=100, maxval=255, type=cv2.THRESH_BINARY)
 
-        # Detect the contours on the binary image using cv2.CHAIN_APPROX_NONE
+        # Detecta contornos dos objetos segmentados
         contours, _ = cv2.findContours(
             image=thresh, mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_NONE)
 
-        # Create bboxes
+        # Cria bboxes
         detections = []
         for i, c in enumerate(contours):
             x, y, w, h = cv2.boundingRect(c)
@@ -44,7 +48,7 @@ def main(source, nms_max_overlap, max_cosine_distance, nn_budget):
                 feature = np.ones(128)
                 detections.append(Detection(bbox, confidence, feature))
 
-        # Run non-maxima suppression.
+        # Passa non-maxima suppression
         if len(detections) > 0:
             boxes = np.array([d.tlwh for d in detections])
             scores = np.array([d.confidence for d in detections])
@@ -52,18 +56,18 @@ def main(source, nms_max_overlap, max_cosine_distance, nn_budget):
                 boxes, nms_max_overlap, scores)
             detections = [detections[i] for i in indices]
 
-            # Update tracker.
+            # Atualiza rastreio
             tracker.predict()
             tracker.update(detections)
 
-            # Draw detections
+            # Desenha detecções
             for d in detections:
                 det = d.tlwh
                 pt1 = int(det[0]), int(det[1])
                 pt2 = int(det[0]+det[2]), int(det[1]+det[3])
                 cv2.rectangle(frame, pt1, pt2, (0, 255, 255), 3)
 
-            # Draw trackers
+            # Desenha objetos rastreados
             for t in tracker.tracks:
                 x, y, w, h = t.to_tlwh().astype(np.int)
                 pt1 = int(x), int(y)
@@ -77,6 +81,8 @@ def main(source, nms_max_overlap, max_cosine_distance, nn_budget):
         key = cv2.waitKey(10)
         if key == 27:
             break
+
+    cv2.destroyAllWindows()
 
 
 def parse_args():
