@@ -1,5 +1,6 @@
 # vim: expandtab:ts=4:sw=4
 from __future__ import absolute_import
+import cv2
 import numpy as np
 from . import kalman_filter
 from . import linear_assignment
@@ -38,12 +39,13 @@ class MOTDeepSORT:
 
     """
 
-    def __init__(self, max_iou_distance=0.7, max_age=30, n_init=3):
+    def __init__(self, max_iou_distance=0.7, max_age=30, n_init=3, matching_threshold=0.2, budget=None, show=True):
         self.metric = NearestNeighborDistanceMetric(
-            "cosine", matching_threshold=0.2, budget=None)
+            "cosine", matching_threshold, budget)
         self.max_iou_distance = max_iou_distance
         self.max_age = max_age
         self.n_init = n_init
+        self.show = show
 
         self.kf = kalman_filter.KalmanFilter()
         self.tracks = []
@@ -57,7 +59,7 @@ class MOTDeepSORT:
         for track in self.tracks:
             track.predict(self.kf)
 
-    def update(self, detections):
+    def update(self, frame, detections):
         """Perform measurement update and track management.
 
         Parameters
@@ -66,9 +68,11 @@ class MOTDeepSORT:
             A list of detections at the current time step.
 
         """
+        # Predict with Kalman Filter
+        self.predict()
+
         # Run matching cascade.
-        matches, unmatched_tracks, unmatched_detections = \
-            self._match(detections)
+        matches, unmatched_tracks, unmatched_detections = self._match(detections)
 
         # Update track set.
         for track_idx, detection_idx in matches:
@@ -91,6 +95,16 @@ class MOTDeepSORT:
             track.features = []
         self.metric.partial_fit(
             np.asarray(features), np.asarray(targets), active_targets)
+
+        # Desenha detecções
+        if self.show:
+            for t in self.tracks:
+                bbox = np.int32(t.to_tlwh())
+                cv2.rectangle(frame, bbox, (0, 0, 0), 2)
+                cv2.putText(
+                    frame, str(t.track_id),
+                    (bbox[0], bbox[1]), cv2.FONT_HERSHEY_SIMPLEX,
+                    .5, (0, 0, 0))
 
     def _match(self, detections):
 

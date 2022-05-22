@@ -130,3 +130,5 @@ dmypy.json
 
 # Custom
 datasets/
+mot-challenge/TrackEval-master
+mot-challenge/data

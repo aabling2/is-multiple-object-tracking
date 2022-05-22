@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 import cv2
-import sys
 import argparse
 import numpy as np
-from application_util import preprocessing
-from deep_sort import nn_matching
-from deep_sort.detection import Detection
-from deep_sort.tracker import Tracker
+from deep_sort.application_util import preprocessing
+from deep_sort.deep_sort import nn_matching
+from deep_sort.deep_sort.detection import Detection
+from deep_sort.deep_sort.tracker import Tracker
 
 
 def main(source, nms_max_overlap, max_cosine_distance, nn_budget):

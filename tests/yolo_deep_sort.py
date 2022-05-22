@@ -24,12 +24,14 @@ def main(source, detector, tracker):
         if not ret or frame is None:
             break
 
+        # frame = cv2.resize(frame, dsize=(640, 640))
+
         # Faz detecções com yolo
         frame = detector.detect(frame)
 
         # Atualiza rastreio
         if tracker is not None:
-            frame = tracker.update(detector.detections)
+            tracker.update(frame, detector.detections)
 
         # Calcula fps
         if count_frames >= max_count:
@@ -65,6 +67,8 @@ def parse_args():
     parser.add_argument(
         "--classes", type=str, default="../datasets/YOLO/yolov5/classes.txt",
         help="Lista de classes.")
+    parser.add_argument(
+        "--gpu", action="store_true", default=False, help="Usa GPU como backend.")
     return parser.parse_args()
 
 
@@ -75,13 +79,15 @@ if __name__ == "__main__":
     # Objeto de detecção
     yolo_v5 = YOLO(
         model=args.model,
-        classes=args.classes)
+        classes=args.classes,
+        gpu=args.gpu)
 
     # Objeto de rastreio
     deep_sort = MOTDeepSORT(
         max_iou_distance=0.7,
         max_age=30,
-        n_init=3)
+        n_init=3,
+        matching_threshold=0.2)
 
     # Framework de detecção e rastreio
-    main(source=args.source, detector=yolo_v5, tracker=None)
+    main(source=args.video, detector=yolo_v5, tracker=deep_sort)

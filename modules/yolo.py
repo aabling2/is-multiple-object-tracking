@@ -4,12 +4,14 @@ import numpy as np
 
 
 class YOLO():
-    def __init__(self, model, classes):
+    def __init__(self, model, classes, gpu=False):
         self.input_width = 640
         self.input_height = 640
         self.score_threshold = 0.2
         self.nms_threshold = 0.4
         self.confidence_threshold = 0.4
+        self.detections = []
+        self.gpu = gpu
 
         # Preset de cores
         self.colors = [(255, 255, 0), (0, 255, 0), (0, 255, 255), (255, 0, 0)]
@@ -26,23 +28,23 @@ class YOLO():
         # Define backend com GPU ou CPU
         active_gpu = cv2.cuda.getCudaEnabledDeviceCount()
         print("GPUs:", active_gpu)
-        if active_gpu > 0:
-            print("Attempty to use CUDA")
+        if active_gpu > 0 and self.gpu:
             self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
-            self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA_FP16)
+            self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
+            print("Running on GPU")
         else:
-            print("Running on CPU")
             self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
-            self.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
+            self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
+            print("Running on CPU")
 
-    def _wrap_detection(self, input_image, output_data):
+    def _wrap_detection(self, output_data, shape):
         class_ids = []
         confidences = []
         boxes = []
 
         rows = output_data.shape[0]
 
-        image_width, image_height, _ = input_image.shape
+        image_width, image_height = shape[:2][::-1]
 
         x_factor = image_width / self.input_width
         y_factor = image_height / self.input_height
@@ -94,15 +96,13 @@ class YOLO():
     def detect(self, frame, draw=True):
 
         # Faz detecções com yolo
-        inputImage = self._format_yolov5(frame)
         blob = cv2.dnn.blobFromImage(
             frame, 1/255.0,
             (self.input_width, self.input_height),
             swapRB=True, crop=False)
         self.net.setInput(blob)
         outs = self.net.forward()
-        class_ids, confidences, boxes = self._wrap_detection(
-            inputImage, outs[0])
+        class_ids, confidences, boxes = self._wrap_detection(outs[0], frame.shape)
 
         # Desenha detecções
         for (classid, conf, box) in zip(class_ids, confidences, boxes):
@@ -116,4 +116,55 @@ class YOLO():
                 (box[0], box[1] - 10), cv2.FONT_HERSHEY_SIMPLEX,
                 .5, (0, 0, 0))
 
+        conf = 1.
+        feature = [-1, -1, -1]
+        self.detections = [Detection(box, conf, feature) for box in boxes]
+
         return frame
+
+
+class Detection(object):
+    """
+    This class represents a bounding box detection in a single image.
+
+    Parameters
+    ----------
+    tlwh : array_like
+        Bounding box in format `(x, y, w, h)`.
+    confidence : float
+        Detector confidence score.
+    feature : array_like
+        A feature vector that describes the object contained in this image.
+
+    Attributes
+    ----------
+    tlwh : ndarray
+        Bounding box in format `(top left x, top left y, width, height)`.
+    confidence : ndarray
+        Detector confidence score.
+    feature : ndarray | NoneType
+        A feature vector that describes the object contained in this image.
+
+    """
+
+    def __init__(self, tlwh, confidence, feature):
+        self.tlwh = np.asarray(tlwh, dtype=np.float)
+        self.confidence = float(confidence)
+        self.feature = np.asarray(feature, dtype=np.float32)
+
+    def to_tlbr(self):
+        """Convert bounding box to format `(min x, min y, max x, max y)`, i.e.,
+        `(top left, bottom right)`.
+        """
+        ret = self.tlwh.copy()
+        ret[2:] += ret[:2]
+        return ret
+
+    def to_xyah(self):
+        """Convert bounding box to format `(center x, center y, aspect ratio,
+        height)`, where the aspect ratio is `width / height`.
+        """
+        ret = self.tlwh.copy()
+        ret[:2] += ret[2:] / 2
+        ret[2] /= ret[3]
+        return ret
