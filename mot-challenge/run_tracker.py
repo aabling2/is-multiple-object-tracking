@@ -54,52 +54,6 @@ class Detection(object):
         return ret
 
 
-def parse_args():
-    """ Parse command line arguments.
-    """
-    parser = argparse.ArgumentParser(description="MOTChallenge evaluation")
-    parser.add_argument(
-        "--mot_dir", help="Path to MOTChallenge directory (train or test)",
-        required=True)
-    parser.add_argument(
-        "--detection_dir", help="Path to detections.", default="detections",
-        required=True)
-    parser.add_argument(
-        "--output_dir", help="Folder in which the results will be stored. Will "
-        "be created if it does not exist.", default="results")
-    parser.add_argument(
-        "--min_confidence", help="Detection confidence threshold. Disregard "
-        "all detections that have a confidence lower than this value.",
-        default=0.3, type=float)
-    parser.add_argument(
-        "--min_detection_height", help="Threshold on the detection bounding "
-        "box height. Detections with height smaller than this value are "
-        "disregarded", default=0, type=int)
-    parser.add_argument(
-        "--nms_max_overlap",  help="Non-maxima suppression threshold: Maximum "
-        "detection overlap.", default=1.0, type=float)
-
-    # App
-    parser.add_argument(
-        "--sequence_dir", help="Path to MOTChallenge sequence directory",
-        default=None, required=True)
-    parser.add_argument(
-        "--detection_file", help="Path to custom detections.", default=None,
-        required=True)
-    parser.add_argument(
-        "--output_file", help="Path to the tracking output file. This file will"
-        " contain the tracking results on completion.",
-        default="/tmp/hypotheses.txt")
-    parser.add_argument(
-        "--display", help="Show intermediate tracking results",
-        default=True, type=bool_string)
-    parser.add_argument(
-        "--nn_budget", help="Maximum size of the appearance descriptors "
-        "gallery. If None, no budget is enforced.", type=int, default=None)
-
-    return parser.parse_args()
-
-
 def gather_sequence_info(sequence_dir, detection_file):
     """Gather sequence information, such as image filenames, detections,
     groundtruth (if available).
@@ -212,43 +166,14 @@ def create_detections(detection_mat, frame_idx, min_height=0):
     return detection_list
 
 
-def run(tracker, sequence_dir, detection_file, output_file, min_confidence,
-        nms_max_overlap, min_detection_height, display):
-    """Run multi-target tracker on a particular sequence.
+def get_tracker_results(tracker, seq_info):
 
-    Parameters
-    ----------
-    sequence_dir : str
-        Path to the MOTChallenge sequence directory.
-    detection_file : str
-        Path to the detections file.
-    output_file : str
-        Path to the tracking output file. This file will contain the tracking
-        results on completion.
-    min_confidence : float
-        Detection confidence threshold. Disregard all detections that have
-        a confidence lower than this value.
-    nms_max_overlap: float
-        Maximum detection overlap (non-maxima suppression threshold).
-    min_detection_height : int
-        Detection height threshold. Disregard all detections that have
-        a height lower than this value.
-    max_cosine_distance : float
-        Gating threshold for cosine distance metric (object appearance).
-    nn_budget : Optional[int]
-        Maximum size of the appearance descriptor gallery. If None, no budget
-        is enforced.
-    display : bool
-        If True, show visualization of intermediate tracking results.
-
-    """
-    seq_info = gather_sequence_info(sequence_dir, detection_file)
     results = []
+    for seq in seq_info:
+        print("set", sequence)
+        # print("Processing frame %05d" % frame_idx)
 
-    def frame_callback(vis, frame_idx):
-        print("Processing frame %05d" % frame_idx)
-
-        # Load image and generate detections.
+        """# Load image and generate detections.
         detections = create_detections(
             seq_info["detections"], frame_idx, min_detection_height)
         detections = [d for d in detections if d.confidence >= min_confidence]
@@ -266,46 +191,27 @@ def run(tracker, sequence_dir, detection_file, output_file, min_confidence,
         # Update tracker.
         tracker.update(image, detections)
 
-        # Update visualization.
-        if display:
-            vis.set_image(image.copy())
-            vis.draw_detections(detections)
-            vis.draw_trackers(tracker.tracks)
-
         # Store results.
         for track in tracker.tracks:
             if not track.is_confirmed() or track.time_since_update > 1:
                 continue
             bbox = track.to_tlwh()
             results.append([
-                frame_idx, track.track_id, bbox[0], bbox[1], bbox[2], bbox[3]])
-
-    # Run tracker.
-    if display:
-        visualizer = visualization.Visualization(seq_info, update_ms=5)
-    else:
-        visualizer = visualization.NoVisualization(seq_info)
-    visualizer.run(frame_callback)
-
-    # Store results.
-    f = open(output_file, 'w')
-    for row in results:
-        print('%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1' % (
-            row[0], row[1], row[2], row[3], row[4], row[5]), file=f)
-
-
-def bool_string(input_string):
-    if input_string not in {"True", "False"}:
-        raise ValueError("Please Enter a valid Ture/False choice")
-    else:
-        return (input_string == "True")
+                frame_idx, track.track_id, bbox[0], bbox[1], bbox[2], bbox[3]])"""
 
 
 if __name__ == "__main__":
-    args = parse_args()
+
+    parser = argparse.ArgumentParser(description="MOTChallenge evaluation")
+    parser.add_argument("--detection_dir", help="Path to detections.", default="detections", required=True)
+    parser.add_argument("--output_dir", help="Folder in which the results will be stored.", default="results")
+    parser.add_argument("--sequence_dir", help="Path to MOTChallenge sequence directory", default=None, required=True)
+    parser.add_argument("--detection_file", help="Path to custom detections.", default=None, required=True)
+    parser.add_argument("--mot_dir", help="Path to MOTChallenge directory (train or test)", required=True)
+    args = parser.parse_args()
+
     os.makedirs(args.output_dir, exist_ok=True)
-    sequences = os.listdir(args.mot_dir)
-    for sequence in sequences:
+    for sequence in os.listdir(args.mot_dir):
         print("Running sequence %s" % sequence)
         sequence_dir = os.path.join(args.mot_dir, sequence)
         detection_file = os.path.join(args.detection_dir, "%s.npy" % sequence)
@@ -317,10 +223,20 @@ if __name__ == "__main__":
             max_age=30,
             n_init=3,
             matching_threshold=0.2,
-            budget=args.nn_budget,
+            budget=100,
             show=False)
 
-        run(
-            deep_sort,
-            args.sequence_dir, args.detection_file, output_file,
-            args.min_confidence, args.nms_max_overlap, args.min_detection_height, args.display)
+        # Pega sequência de imagens
+        print("Sequence dir:", args.sequence_dir)
+        print("Detection file:", args.detection_file)
+        seq_info = gather_sequence_info(args.sequence_dir, args.detection_file)
+
+        # Obtem resultados
+        results = get_tracker_results(deep_sort, seq_info)
+
+        # Salva resultados
+        """f = open(output_file, 'w')
+        for row in results:
+            print(
+                '%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1' %
+                (row[0], row[1], row[2], row[3], row[4], row[5]), file=f)"""
