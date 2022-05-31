@@ -2,59 +2,9 @@
 import cv2
 import time
 import argparse
-from modules.yolo import YOLO
-from modules.deep_sort import MOTDeepSORT
-
-
-def main(source, detector, tracker):
-    # Abre captura de vídeo
-    cap = cv2.VideoCapture(source)
-
-    # Variáveis para fps
-    fps = 0
-    count_frames = 0
-    max_count = 20
-
-    while cap.isOpened():
-        if count_frames == 0:
-            start = time.time()
-
-        ret, frame = cap.read()
-
-        if not ret or frame is None:
-            break
-
-        # frame = cv2.resize(frame, dsize=(640, 640))
-
-        # Faz detecções com yolo
-        frame = detector.detect(frame)
-
-        # Atualiza rastreio
-        if tracker is not None:
-            tracker.update(frame, detector.detections)
-
-        # Calcula fps
-        if count_frames >= max_count:
-            fps = count_frames/(time.time() - start)
-            count_frames = 0
-        else:
-            count_frames += 1
-
-        # Desenha fps na imagem
-        fps_label = "FPS: %.2f" % fps
-        cv2.putText(
-            frame, fps_label, (10, 25),
-            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-
-        # Results
-        cv2.imshow("Result", frame)
-
-        # Key
-        key = cv2.waitKey(10)
-        if key == 27:
-            break
-
-    cv2.destroyAllWindows()
+import numpy as np
+from yolo.cv_yolo import YOLO
+from deep_sort.tracker import DeepSORT
 
 
 def parse_args():
@@ -72,22 +22,89 @@ def parse_args():
     return parser.parse_args()
 
 
+def main(source, detector, tracker):
+    # Abre captura de vídeo
+    cap = cv2.VideoCapture(source)
+
+    # Variáveis para fps
+    fps = 0
+    count_frames = 0
+    max_count = 20
+
+    # Resize
+    factor = 0.5
+    width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+    height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+    dsize = np.int32([width*factor, height*factor])
+
+    while cap.isOpened():
+        if count_frames == 0:
+            start = time.time()
+
+        ret, frame = cap.read()
+
+        if not ret or frame is None:
+            break
+
+        frame = cv2.resize(frame, dsize)
+
+        # Faz detecções com yolo
+        start_detector = time.time()
+        detector.detect(frame)
+        time_detector = time.time() - start_detector
+
+        # Atualiza rastreio
+        if tracker is not None:
+            start_tracker = time.time()
+            tracker.update(frame, detector.detections)
+            time_tracker = time.time() - start_tracker
+
+        # Calcula fps
+        if count_frames >= max_count:
+            fps = count_frames/(time.time() - start)
+            count_frames = 0
+        else:
+            count_frames += 1
+
+        # Desenha detecções
+        detector.draw(frame)
+        if tracker is not None:
+            tracker.draw(frame)
+
+        # Desenha fps na imagem
+        fps_label = "FPS: %.2f" % fps
+        cv2.putText(
+            frame, fps_label, (10, 25),
+            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+        # Results
+        cv2.imshow("Result", frame)
+        print(f"timing: detection {time_detector}, tracking {time_tracker}")
+
+        # Key
+        key = cv2.waitKey(10)
+        if key == 27:
+            break
+
+    cv2.destroyAllWindows()
+
+
 if __name__ == "__main__":
     # Argumentos de entrada
     args = parse_args()
 
     # Objeto de detecção
-    yolo_v5 = YOLO(
+    detector = YOLO(
         model=args.model,
         classes=args.classes,
         gpu=args.gpu)
 
     # Objeto de rastreio
-    deep_sort = MOTDeepSORT(
+    tracker = DeepSORT(
         max_iou_distance=0.7,
         max_age=30,
         n_init=3,
         matching_threshold=0.2)
 
     # Framework de detecção e rastreio
-    main(source=args.video, detector=yolo_v5, tracker=deep_sort)
+    main(source=args.video, detector=detector, tracker=tracker)

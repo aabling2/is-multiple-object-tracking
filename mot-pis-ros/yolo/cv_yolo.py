@@ -11,6 +11,7 @@ class YOLO():
         self.nms_threshold = 0.4
         self.confidence_threshold = 0.4
         self.detections = []
+        self.classids = []
         self.gpu = gpu
 
         # Preset de cores
@@ -104,8 +105,15 @@ class YOLO():
         outs = self.net.forward()
         class_ids, confidences, boxes = self._wrap_detection(outs[0], frame.shape)
 
-        # Desenha detecções
-        for (classid, conf, box) in zip(class_ids, confidences, boxes):
+        conf = 1.
+        feature = [-1, -1, -1]
+        self.detections = [Detection(box, conf, feature) for box in boxes]
+        self.classids = class_ids
+
+    # Desenha detecções
+    def draw(self, frame):
+        for classid, detection in zip(self.classids, self.detections):
+            box = detection.box
             color = self.colors[int(classid) % len(self.colors)]
             cv2.rectangle(frame, box, color, 2)
             cv2.rectangle(
@@ -115,12 +123,6 @@ class YOLO():
                 frame, self.class_list[classid],
                 (box[0], box[1] - 10), cv2.FONT_HERSHEY_SIMPLEX,
                 .5, (0, 0, 0))
-
-        conf = 1.
-        feature = [-1, -1, -1]
-        self.detections = [Detection(box, conf, feature) for box in boxes]
-
-        return frame
 
 
 class Detection(object):
@@ -148,6 +150,7 @@ class Detection(object):
     """
 
     def __init__(self, tlwh, confidence, feature):
+        self.box = tlwh
         self.tlwh = np.asarray(tlwh, dtype=np.float)
         self.confidence = float(confidence)
         self.feature = np.asarray(feature, dtype=np.float32)

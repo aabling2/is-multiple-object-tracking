@@ -9,7 +9,7 @@ from .track import Track
 from .nn_matching import NearestNeighborDistanceMetric
 
 
-class MOTDeepSORT:
+class DeepSORT:
     """
     This is the multi-target tracker.
 
@@ -39,13 +39,12 @@ class MOTDeepSORT:
 
     """
 
-    def __init__(self, max_iou_distance=0.7, max_age=30, n_init=3, matching_threshold=0.2, budget=None, show=True):
+    def __init__(self, max_iou_distance=0.7, max_age=30, n_init=3, matching_threshold=0.2, budget=None):
         self.metric = NearestNeighborDistanceMetric(
             "cosine", matching_threshold, budget)
         self.max_iou_distance = max_iou_distance
         self.max_age = max_age
         self.n_init = n_init
-        self.show = show
 
         self.kf = kalman_filter.KalmanFilter()
         self.tracks = []
@@ -96,16 +95,6 @@ class MOTDeepSORT:
         self.metric.partial_fit(
             np.asarray(features), np.asarray(targets), active_targets)
 
-        # Desenha detecções
-        if self.show:
-            for t in self.tracks:
-                bbox = np.int32(t.to_tlwh())
-                cv2.rectangle(frame, bbox, (0, 0, 0), 2)
-                cv2.putText(
-                    frame, str(t.track_id),
-                    (bbox[0], bbox[1]), cv2.FONT_HERSHEY_SIMPLEX,
-                    .5, (0, 0, 0))
-
     def _match(self, detections):
 
         def gated_metric(tracks, dets, track_indices, detection_indices):
@@ -152,3 +141,13 @@ class MOTDeepSORT:
             mean, covariance, self._next_id, self.n_init, self.max_age,
             detection.feature))
         self._next_id += 1
+
+    def draw(self, frame):
+        # Desenha detecções
+        for t in self.tracks:
+            bbox = np.int32(t.to_tlwh())
+            cv2.rectangle(frame, bbox, (0, 0, 0), 2)
+            cv2.putText(
+                frame, str(t.track_id),
+                (bbox[0]+2, bbox[1]+15), cv2.FONT_HERSHEY_SIMPLEX,
+                .5, (0, 0, 0))
