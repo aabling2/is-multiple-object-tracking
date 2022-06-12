@@ -9,7 +9,7 @@ from multi_cam.correlation import CrossCorrelationID
 def parse_args():
     parser = argparse.ArgumentParser(description="EPFL Dataset - multiclass_ground_thuth")
     parser.add_argument("--images", type=str, required=True, help="Imagens multiplas câmeras.")
-    parser.add_argument("--annotation", type=str, help="Anotação das bounding boxes.")
+    parser.add_argument("--annotation", type=str, required=True, help="Anotação das bounding boxes.")
     return parser.parse_args()
 
 
@@ -53,14 +53,21 @@ def main(batch):
         images = [cv2.imread(img) for img in sample['img']]
 
         # Aplica associação entre objetos
-        ccid.apply(frames=images, detections=sample['bboxes'])
+        ids = ccid.apply(frames=images, detections=sample['bboxes'])
 
         # Desenha bboxes de detecção
+        j = 0
         for i, bboxes in enumerate(sample['bboxes']):
             for box in bboxes:
                 pt1 = box[0:2]
                 pt2 = box[2:4]
-                cv2.rectangle(images[i], pt1, pt2, color=(0, 255, 255), thickness=2)
+                label = ids[j]
+                np.random.seed(label)
+                color = [int(x) for x in np.random.randint(0, 255, size=(3, ))]
+                # cv2.putText(images[i], str(j), pt1, cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+                cv2.putText(images[i], str(label), pt1, cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+                cv2.rectangle(images[i], pt1, pt2, color=color, thickness=2)
+                j += 1
 
         # Mostra imagens
         concat1 = cv2.hconcat(images[:3])
