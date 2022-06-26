@@ -3,7 +3,7 @@ import os
 import cv2
 import argparse
 import numpy as np
-from multi_cam.correlation import CrossCorrelationID
+from re_id.correlation import CrossCorrelationID
 
 
 def parse_args():
