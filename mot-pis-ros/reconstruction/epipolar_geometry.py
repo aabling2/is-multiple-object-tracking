@@ -217,17 +217,54 @@ class PointsReconstructor():
 
         self.pts_objects = points[mask]
 
+    # Cria setas para referência dos eixos, rgb(xyz)
+    # y e z invertidos para representação comum
+    def _set_arrows_orientation(self, ax, origin=np.array([0., 0., 0.]),
+                                vector=np.append(np.eye(3), np.ones((1, 3)), axis=0)):
+        x, y, z = origin
+        xv, yv, zv = vector[:-1, 0]
+        xs, ys, zs = xv-x, yv-y, zv-z
+        ax.quiver(
+            x, z, y,
+            xs, zs, ys,
+            color="red", alpha=1., lw=1
+        )
+        xv, yv, zv = vector[:-1, 1]
+        xs, ys, zs = xv-x, yv-y, zv-z
+        ax.quiver(
+            x, z, y,
+            xs, zs, ys,
+            color="green", alpha=1., lw=1
+        )
+        xv, yv, zv = vector[:-1, 2]
+        xs, ys, zs = xv-x, yv-y, zv-z
+        ax.quiver(
+            x, z, y,
+            xs, zs, ys,
+            color="blue", alpha=1., lw=1
+        )
+
     def render_scene(self):
         _ = plt.figure()
         ax = plt.axes(projection='3d')
 
         # Cameras
-        Xs, Ys, Zs = self.pts_cameras.T
-        ax.scatter3D(Xs, Ys, Zs, c=None, color='red')
+        if self.pts_cameras is not None:
+            x0, z0, y0 = self.pts_cameras[0]
+            ax.scatter3D(x0, y0, z0, c=None, color='red')
+            x1, z1, y1 = self.pts_cameras[1]
+            ax.scatter3D(x1, y1, z1, c=None, color='blue')
+
+            # Arrows
+            # self._set_arrows_orientation(ax=ax)
+            # self._set_arrows_orientation(
+            #     ax=ax, origin=self.pts_cameras[1],
+            #     vector=np.append(self.M_r[:3, :3], [self.M_r[:, 3]], axis=0))
 
         # Keipoints
-        Xs, Ys, Zs = self.pts_objects.T
-        ax.scatter3D(Xs, Ys, Zs, c=None, color='blue')
+        if self.pts_objects is not None:
+            Xs, Zs, Ys = self.pts_objects.T
+            ax.scatter3D(Xs, Ys, Zs, c=None, color='green')
 
         # Plot
         plt.show()

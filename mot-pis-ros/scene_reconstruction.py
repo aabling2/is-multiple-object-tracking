@@ -17,7 +17,8 @@ if __name__ == "__main__":
     reconstructor.calibrate(frames=[img1, img2])
 
     # Teste
-    reconstructor.reconstruct(points=np.array([[[0, 0]], [[10, 10]]]))
+    # reconstructor.reconstruct(points=np.array([[[0, 0]], [[10, 10]]]))
+    reconstructor.reconstruct(points=reconstructor.keypoints)
     reconstructor.render_scene()
 
     # Match keypoints
