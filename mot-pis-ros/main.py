@@ -9,7 +9,7 @@ from core.tracking import IntelligentSpaceMOT
 
 def main():
     try:
-        from ismsgs import decoder, encoder
+        from is_msgs import decoder, encoder
     except Exception as e:
         print("PIS modules error:", e)
         return
