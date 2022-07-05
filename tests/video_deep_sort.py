@@ -2,10 +2,10 @@
 import cv2
 import argparse
 import numpy as np
-from deep_sort.application_util import preprocessing
-from deep_sort.deep_sort import nn_matching
-from deep_sort.deep_sort.detection import Detection
-from deep_sort.deep_sort.tracker import Tracker
+from DeepSORT.application_util import preprocessing
+from DeepSORT.deep_sort import nn_matching
+from DeepSORT.deep_sort.detection import Detection
+from DeepSORT.deep_sort.tracker import Tracker
 
 
 def main(source, nms_max_overlap, max_cosine_distance, nn_budget):
@@ -18,7 +18,7 @@ def main(source, nms_max_overlap, max_cosine_distance, nn_budget):
     # Cria rastreador
     metric = nn_matching.NearestNeighborDistanceMetric(
         "cosine", max_cosine_distance, nn_budget)
-    tracker = Tracker(metric)
+    tracker = Tracker()
 
     while cap.isOpened():
         ret, frame = cap.read()

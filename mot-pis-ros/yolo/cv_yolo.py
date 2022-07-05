@@ -97,10 +97,7 @@ class YOLO():
     def detect(self, frame, draw=True):
 
         # Faz detecções com yolo
-        blob = cv2.dnn.blobFromImage(
-            frame, 1/255.0,
-            (self.input_width, self.input_height),
-            swapRB=True, crop=False)
+        blob = cv2.dnn.blobFromImage(frame, 1/255.0, (self.input_width, self.input_height), swapRB=True, crop=False)
         self.net.setInput(blob)
         outs = self.net.forward()
         class_ids, confidences, boxes = self._wrap_detection(outs[0], frame.shape)

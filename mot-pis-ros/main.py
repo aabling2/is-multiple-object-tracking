@@ -4,25 +4,51 @@ import time
 import argparse
 import numpy as np
 from yolo.cv_yolo import YOLO
-from deep_sort.tracker import DeepSORT
+from core.tracking import IntelligentSpaceMOT
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Open Video Deep SORT")
-    parser.add_argument(
-        "--video", type=str, required=True, help="Fonte de vídeo.")
-    parser.add_argument(
-        "--model", type=str, default="../datasets/YOLO/yolov5/yolov5s.onnx",
-        help="Modelo treinado.")
-    parser.add_argument(
-        "--classes", type=str, default="../datasets/YOLO/yolov5/classes.txt",
-        help="Lista de classes.")
-    parser.add_argument(
-        "--gpu", action="store_true", default=False, help="Usa GPU como backend.")
-    return parser.parse_args()
+def main():
+    try:
+        from ismsgs import decoder, encoder
+    except Exception as e:
+        print("PIS modules error:", e)
+        return
+
+    # Objeto de rastreio
+    tracker = IntelligentSpaceMOT(num_src=4)
+
+    while True:
+
+        # Obtém imagem
+        frames = decoder.consume_image()
+
+        # Obtém anotação do detector
+        detector = decoder.consume_annotation()
+
+        # Atualiza rastreio
+        tracker.update(frames, detector.regions)
+
+        # Desenha detecções
+        tracker.draw(frames)
+
+        # Objetos de saída do rastreio
+        encoder.publish_annotation(objects=tracker.tracks)
+
+        # Frames de saída
+        encoder.publish_image(frames=[frames])
+
+        # Results
+        cv2.imshow("Result", frames)
+
+        # Key
+        key = cv2.waitKey(10)
+        if key == 27:
+            break
+
+    cv2.destroyAllWindows()
 
 
-def main(source, detector, tracker):
+def test(source, detector, tracker):
     # Abre captura de vídeo
     cap = cv2.VideoCapture(source)
 
@@ -56,7 +82,7 @@ def main(source, detector, tracker):
         # Atualiza rastreio
         if tracker is not None:
             start_tracker = time.time()
-            tracker.update(frame, detector.detections)
+            tracker.update([frame], [detector.detections])
             time_tracker = time.time() - start_tracker
 
         # Calcula fps
@@ -69,7 +95,7 @@ def main(source, detector, tracker):
         # Desenha detecções
         detector.draw(frame)
         if tracker is not None:
-            tracker.draw(frame)
+            tracker.draw([frame])
 
         # Desenha fps na imagem
         fps_label = "FPS: %.2f" % fps
@@ -91,20 +117,26 @@ def main(source, detector, tracker):
 
 if __name__ == "__main__":
     # Argumentos de entrada
-    args = parse_args()
+    parser = argparse.ArgumentParser(description="Open Video Deep SORT")
+    parser.add_argument("--test", action="store_true", help="Executa teste local.")
+    parser.add_argument("--video", type=str, required=True, help="Fonte de vídeo.")
+    parser.add_argument("--model", type=str, default="../datasets/YOLO/yolov5/yolov5s.onnx", help="Modelo treinado.")
+    parser.add_argument("--classes", type=str, default="../datasets/YOLO/yolov5/classes.txt", help="Lista de classes.")
+    parser.add_argument("--gpu", action="store_true", default=False, help="Usa GPU como backend.")
+    args = parser.parse_args()
 
-    # Objeto de detecção
-    detector = YOLO(
-        model=args.model,
-        classes=args.classes,
-        gpu=args.gpu)
+    if args.test:
+        # Objeto de detecção
+        detector = YOLO(
+            model=args.model,
+            classes=args.classes,
+            gpu=args.gpu)
 
-    # Objeto de rastreio
-    tracker = DeepSORT(
-        max_iou_distance=0.7,
-        max_age=30,
-        n_init=3,
-        matching_threshold=0.2)
+        # Objeto de rastreio
+        tracker = IntelligentSpaceMOT()
 
-    # Framework de detecção e rastreio
-    main(source=args.video, detector=detector, tracker=tracker)
+        # Framework de detecção e rastreio
+        test(source=args.video, detector=detector, tracker=tracker)
+
+    else:
+        main()
