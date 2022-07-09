@@ -16,9 +16,8 @@ def main(source, nms_max_overlap, max_cosine_distance, nn_budget):
     backsub = cv2.createBackgroundSubtractorMOG2()
 
     # Cria rastreador
-    metric = nn_matching.NearestNeighborDistanceMetric(
-        "cosine", max_cosine_distance, nn_budget)
-    tracker = Tracker()
+    metric = nn_matching.NearestNeighborDistanceMetric("cosine", max_cosine_distance, nn_budget)
+    tracker = Tracker(metric)
 
     while cap.isOpened():
         ret, frame = cap.read()

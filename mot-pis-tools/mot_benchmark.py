@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-from DeepSORT.deep_sort import tracker as deep_sort
 from DeepSORT.deep_sort import nn_matching
 from DeepSORT.deep_sort.detection import Detection
-from DeepSORT.deep_sort.tracker import Tracker
+from DeepSORT.deep_sort.tracker import Tracker as deep_sort
 
 
 trackers = [
