@@ -1,7 +1,7 @@
 import os
 import cv2
 import argparse
-from utils import save_json, load_json
+from utils import create_folder, save_json, load_json
 
 
 VERSION = "0.1.0"
@@ -34,7 +34,7 @@ def map_images(src):
             if os.path.splitext(x)[1] in ['.jpg', '.jpeg']
         ])
 
-    return batch_files
+    return sorted(batch_files)
 
 
 # Cria arquivo JSON padrão
@@ -43,25 +43,15 @@ def create_annotation_file(dst):
     annotation = {
         "source": None,  # fonte do dataset, apenas para conhecimento
         "version": VERSION,  # versão do código de anotação de vídeo
-        "samples": 0,  # qtd. de amostras/imagens
+        "frames": 0,  # qtd. de amostras/imagens
         "objects": [],  # ids rastreados
-        "data": {"images": [], "bboxes": [], "labels": [], "ids": []}  # dados de anotação relevantes
+        "refs": {"image": 0, "bboxes": 1, "labels": 2, "ids": 3},
+        "data": []  # dados de anotação relevantes
     }
 
     save_json(dst, annotation)
 
-    return annotation
-
-
-# Atualiza arquivo JSON com dados novos
-def update_annotation_file(filename, data, images, bboxes, labels, ids, msg=True):
-    idxs = [images.index(x) for x in sorted(images)]
-    data['data']['images'] = [images[i] for i in idxs]
-    data['data']['bboxes'] = [bboxes[i] for i in idxs]
-    data['data']['labels'] = [labels[i] for i in idxs]
-    data['data']['ids'] = [ids[i] for i in idxs]
-    data['objects'] = list(set(x for fids in data['data']['ids'] for x in fids))
-    save_json(filename, data, message=msg)
+    return annotation    
 
 
 # Trackbar return
@@ -86,6 +76,7 @@ class CallbackMouse():
             self.left_button_press = False
             self.right_button_press = False
             self.middle_button_press = False
+            self.editing_id = None
             return
 
         if self.shape is not None:
@@ -158,22 +149,31 @@ def move_point(bbox, mouse, id, proximity=20):
 # Registra anotação de vídeo em arquivo JSON padrão
 def main(src, imgfiles, max_objects, autocomplete=None):
 
+    # Barra no final
+    if src[-1] == "/":
+        src = src[:-1]
+
     # Carrega ou cria arquivo de anotação
-    filename = os.path.join(src, "annotation")
+    dst_folder = os.path.join("data", os.path.basename(src))
+    create_folder(dst_folder)
+    filename = os.path.join(dst_folder, "annotation")
     annotation = load_json(filename)
     if annotation is None:
         annotation = create_annotation_file(filename)
 
-    # Registra dataset fonte
+    # Registra dataset fonte e info
+    max_frames = len(imgfiles)
     annotation['source'] = src
-    annotation['samples'] = len(imgfiles)
+    annotation['frames'] = max_frames
 
-    # Carrega dados existentes
-    data = annotation['data']
-    all_images = data['images']
-    all_bboxes = data['bboxes']
-    all_labels = data['labels']
-    all_ids = data['ids']
+    # Preenche data conforme mapping do dataset
+    imgdata = [x[0] for x in annotation['data']]
+    data = []
+    for sample in imgfiles:
+        if sample not in imgdata:
+            data.append([sample, [], [], []])
+        else:
+            data.append(annotation['data'][imgdata.index(sample)])
 
     # Escrita
     font = cv2.FONT_HERSHEY_SIMPLEX
@@ -198,26 +198,14 @@ def main(src, imgfiles, max_objects, autocomplete=None):
     mouse = CallbackMouse(window="frame")
 
     # Processo de anotação por frame
-    i, n = 0, 0
+    idx = 0
     while True:
 
         # Carrega dados da amostra
-        frame_path = imgfiles[n]
-        frame_bboxes = []
-        frame_labels = []
-        frame_ids = []
-
-        # Atualiza amostras
-        if frame_path in all_images:
-            i = all_images.index(frame_path)
-            frame_bboxes = all_bboxes[i]
-            frame_labels = all_labels[i]
-            frame_ids = all_ids[i]
-        else:
-            all_images.append(frame_path)
-            all_bboxes.append(frame_bboxes)
-            all_labels.append(frame_labels)
-            all_ids.append(frame_ids)
+        frame_path = data[idx][annotation['refs']['image']]
+        frame_bboxes = data[idx][annotation['refs']['bboxes']]
+        frame_labels = data[idx][annotation['refs']['labels']]
+        frame_ids = data[idx][annotation['refs']['ids']]
 
         # Verifica se existem bounding boxes para autocompletar
         if autocomplete and frame_bboxes == []:
@@ -229,9 +217,6 @@ def main(src, imgfiles, max_objects, autocomplete=None):
         frame = cv2.imread(os.path.join(src, frame_path))
         out = frame.copy()
 
-        # Index da amostra
-        i = all_images.index(frame_path)
-
         # Edita anotação com mouse
         mouse.shape = frame.shape[:2][::-1]
         mouse_status = [mouse.left_button_press, mouse.middle_button_press]
@@ -239,9 +224,7 @@ def main(src, imgfiles, max_objects, autocomplete=None):
             frame_bboxes = [move_box(box, mouse, j) for j, box in enumerate(frame_bboxes)]
         if mouse.left_button_press:
             frame_bboxes = [move_point(box, mouse, j) for j, box in enumerate(frame_bboxes)]
-        if True in mouse_status:
-            all_bboxes[i] = frame_bboxes
-        else:
+        if True not in mouse_status:
             mouse.editing_id = None
 
         # Desenha objetos
@@ -262,7 +245,7 @@ def main(src, imgfiles, max_objects, autocomplete=None):
             cv2.putText(out, str(id), (pt2[0]-2-12*len(str(id)), pt1[1]-3), font, font_scale*1.2, (255, 255, 255))
 
         # Indicativos na tela
-        cv2.putText(out, f"FRAME: {n+1}/{annotation['samples']}", (5, 25), font, font_scale*2, color, thickness, line)
+        cv2.putText(out, f"FRAME: {idx+1}/{max_frames}", (5, 25), font, font_scale*2, color, thickness, line)
         cv2.putText(out, "ESC - sair", (5, 45), font, font_scale, color, thickness, line)
         cv2.putText(out, "a - voltar", (5, 65), font, font_scale, color, thickness, line)
         cv2.putText(out, "d - avancar", (5, 85), font, font_scale, color, thickness, line)
@@ -275,26 +258,29 @@ def main(src, imgfiles, max_objects, autocomplete=None):
         # Captura de teclas
         delay = 10 if True in mouse_status else 100
         key = cv2.waitKey(delay)
-        if key == 27:
-            update_annotation_file(filename, annotation, all_images, all_bboxes, all_labels, all_ids)
+        if key == 27:  # ESC
+            annotation['objects'] = list(set(x for sample in data for x in sample[annotation['refs']['ids']]))
+            save_json(filename, annotation, indent=True, message=True)
             break
 
-        elif key == ord('d') and n < annotation['samples']:
-            n += 1
-            all_bboxes[i] = frame_bboxes
-            all_labels[i] = frame_labels
-            all_ids[i] = frame_ids
+        if key == ord('d') and idx < max_frames:
+            data[idx][annotation['refs']['image']] = frame_path
+            data[idx][annotation['refs']['bboxes']] = frame_bboxes
+            data[idx][annotation['refs']['labels']] = frame_labels
+            data[idx][annotation['refs']['ids']] = frame_ids
+            idx += 1
             # Salva dados do frame anterior
             if autocomplete:
                 auto_bboxes = frame_bboxes
                 auto_labels = frame_labels
                 auto_ids = frame_ids
 
-        elif key == ord('a') and n > 0:
-            n -= 1
-            all_bboxes[i] = frame_bboxes
-            all_labels[i] = frame_labels
-            all_ids[i] = frame_ids
+        elif key == ord('a') and idx > 0:
+            data[idx][annotation['refs']['image']] = frame_path
+            data[idx][annotation['refs']['bboxes']] = frame_bboxes
+            data[idx][annotation['refs']['labels']] = frame_labels
+            data[idx][annotation['refs']['ids']] = frame_ids
+            idx -= 1
             # Salva dados do frame anterior
             if autocomplete:
                 auto_bboxes = frame_bboxes
@@ -302,9 +288,9 @@ def main(src, imgfiles, max_objects, autocomplete=None):
                 auto_ids = frame_ids
 
         elif key == ord('z'):
-            all_bboxes[i] = []
-            all_labels[i] = []
-            all_ids[i] = []
+            frame_bboxes = []
+            frame_labels = []
+            frame_ids = []
             if autocomplete:
                 auto_bboxes = []
                 auto_labels = []
@@ -336,9 +322,9 @@ def main(src, imgfiles, max_objects, autocomplete=None):
                     break
                 elif key == 13:
                     # Atualiza valores de referência
-                    all_bboxes[i].append(r)
-                    all_labels[i].append(LABELS[int(cv2.getTrackbarPos('label', 'crop'))])
-                    all_ids[i].append(int(cv2.getTrackbarPos('id', 'crop')))
+                    frame_bboxes.append(r)
+                    frame_labels.append(LABELS[int(cv2.getTrackbarPos('label', 'crop'))])
+                    frame_ids.append(int(cv2.getTrackbarPos('id', 'crop')))
                     print("Objeto adicionado no frame:", frame_path)
                     break
 
@@ -348,10 +334,9 @@ def main(src, imgfiles, max_objects, autocomplete=None):
             mouse = CallbackMouse(window="frame")
 
         # Salva dados no arquivo JSON
-        if key != -1 or not mouse.editing_id:
-            update_annotation_file(
-                filename, annotation,
-                all_images, all_bboxes, all_labels, all_ids, msg=False)
+        if key != -1 or mouse.editing_id:
+            annotation['data'] = data
+            save_json(filename, annotation, indent=True, message=False)
 
 
 if __name__ == '__main__':
@@ -360,6 +345,3 @@ if __name__ == '__main__':
     args = parse_args()
     mapfiles = map_images(src=args.images)
     main(src=args.images, imgfiles=mapfiles, max_objects=args.max_objects, autocomplete=args.autocomplete)
-
-    # Objetos não ficando salvos na ordem definida
-    # Objetos sumindo do nada
