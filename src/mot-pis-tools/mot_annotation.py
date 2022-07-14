@@ -45,13 +45,12 @@ def create_annotation_file(dst):
         "version": VERSION,  # versão do código de anotação de vídeo
         "frames": 0,  # qtd. de amostras/imagens
         "objects": [],  # ids rastreados
-        "refs": {"image": 0, "bboxes": 1, "labels": 2, "ids": 3},
-        "data": []  # dados de anotação relevantes
+        "data": {"images": [], "bboxes": [], "labels": [], "ids": []}  # dados de anotação relevantes
     }
 
     save_json(dst, annotation)
 
-    return annotation    
+    return annotation
 
 
 # Trackbar return
@@ -66,6 +65,7 @@ class CallbackMouse():
         self.left_button_press = False
         self.right_button_press = False
         self.middle_button_press = False
+        self.left_double_click = False
         self.editing_id = None
         self.shape = shape
         cv2.setMouseCallback(window, self.mouse_events)
@@ -107,15 +107,16 @@ class CallbackMouse():
         if event == cv2.EVENT_MBUTTONUP:
             self.middle_button_press = False
 
+        self.left_double_click = True if event == cv2.EVENT_LBUTTONDBLCLK else False
+
 
 # Redefine posição da bounding box do objeto
 def move_box(bbox, mouse, id):
     if mouse.editing_id is None or mouse.editing_id == id:
         mx, my = mouse.point
         x, y, w, h = bbox
-        if mx > x and mx < x+w-1 and my > y and my < y+h-1:
-            bbox[0] = mx-(w//2)
-            bbox[1] = my-(h//2)
+        if (mx > x and mx < x+w-1 and my > y and my < y+h-1) or mouse.editing_id is not None:
+            bbox = tuple([mx-(w//2), my-(h//2), w, h])
             mouse.editing_id = id
 
     return bbox
@@ -141,7 +142,7 @@ def move_point(bbox, mouse, id, proximity=20):
 
             if bbox != [x, y, w, h]:
                 mouse.editing_id = id
-                bbox = [x, y, w, h]
+                bbox = tuple([x, y, w, h])
 
     return bbox
 
@@ -167,13 +168,22 @@ def main(src, imgfiles, max_objects, autocomplete=None):
     annotation['frames'] = max_frames
 
     # Preenche data conforme mapping do dataset
-    imgdata = [x[0] for x in annotation['data']]
-    data = []
-    for sample in imgfiles:
-        if sample not in imgdata:
-            data.append([sample, [], [], []])
+    data_annotation = annotation['data']
+    data_images = data_annotation['images']
+    data_bboxes = data_annotation['bboxes']
+    data_labels = data_annotation['labels']
+    data_ids = data_annotation['ids']
+    fill_idx = [data_images.index(x) if x in data_images else None for x in imgfiles]
+    data = {"images": imgfiles, "bboxes": [], "labels": [], "ids": []}
+    for idx in fill_idx:
+        if idx is not None:
+            data['bboxes'].append(data_bboxes[idx])
+            data['labels'].append(data_labels[idx])
+            data['ids'].append(data_ids[idx])
         else:
-            data.append(annotation['data'][imgdata.index(sample)])
+            data['bboxes'].append([])
+            data['labels'].append([])
+            data['ids'].append([])
 
     # Escrita
     font = cv2.FONT_HERSHEY_SIMPLEX
@@ -185,12 +195,6 @@ def main(src, imgfiles, max_objects, autocomplete=None):
     # Preset de cores
     obj_colors = [(255, 255, 0), (0, 255, 0), (0, 255, 255), (255, 0, 0)]
 
-    # Variáveis auxiliares autocomplete
-    if autocomplete:
-        auto_bboxes = []
-        auto_labels = []
-        auto_ids = []
-
     # Cria janela
     cv2.namedWindow("frame")
 
@@ -198,20 +202,20 @@ def main(src, imgfiles, max_objects, autocomplete=None):
     mouse = CallbackMouse(window="frame")
 
     # Processo de anotação por frame
-    idx = 0
+    idx, idx_auto = 0, 0
     while True:
 
         # Carrega dados da amostra
-        frame_path = data[idx][annotation['refs']['image']]
-        frame_bboxes = data[idx][annotation['refs']['bboxes']]
-        frame_labels = data[idx][annotation['refs']['labels']]
-        frame_ids = data[idx][annotation['refs']['ids']]
+        frame_path = data['images'][idx]
+        frame_bboxes = data['bboxes'][idx]
+        frame_labels = data['labels'][idx]
+        frame_ids = data['ids'][idx]
 
         # Verifica se existem bounding boxes para autocompletar
         if autocomplete and frame_bboxes == []:
-            frame_bboxes = auto_bboxes
-            frame_labels = auto_labels
-            frame_ids = auto_ids
+            frame_bboxes = data['bboxes'][idx_auto]
+            frame_labels = data['labels'][idx_auto]
+            frame_ids = data['ids'][idx_auto]
 
         # Lê imagens
         frame = cv2.imread(os.path.join(src, frame_path))
@@ -249,58 +253,50 @@ def main(src, imgfiles, max_objects, autocomplete=None):
         cv2.putText(out, "ESC - sair", (5, 45), font, font_scale, color, thickness, line)
         cv2.putText(out, "a - voltar", (5, 65), font, font_scale, color, thickness, line)
         cv2.putText(out, "d - avancar", (5, 85), font, font_scale, color, thickness, line)
-        cv2.putText(out, "e - editar", (5, 105), font, font_scale, color, thickness, line)
-        cv2.putText(out, "z - excluir", (5, 125), font, font_scale, color, thickness, line)
+        cv2.putText(out, "e - excluir", (5, 105), font, font_scale, color, thickness, line)
+        cv2.putText(out, "s - add", (5, 125), font, font_scale, color, thickness, line)
 
         # Mostra imagem
         cv2.imshow("frame", out)
+
+        # Atualiza amostra na anotação
+        data['bboxes'][idx] = frame_bboxes
+        data['labels'][idx] = frame_labels
+        data['ids'][idx] = frame_ids
 
         # Captura de teclas
         delay = 10 if True in mouse_status else 100
         key = cv2.waitKey(delay)
         if key == 27:  # ESC
-            annotation['objects'] = list(set(x for sample in data for x in sample[annotation['refs']['ids']]))
-            save_json(filename, annotation, indent=True, message=True)
+            annotation['data'] = data
+            annotation['objects'] = list(set(x for ids in data['ids'] for x in ids))
+            save_json(filename, annotation, indent=False, message=True)
             break
 
         if key == ord('d') and idx < max_frames:
-            data[idx][annotation['refs']['image']] = frame_path
-            data[idx][annotation['refs']['bboxes']] = frame_bboxes
-            data[idx][annotation['refs']['labels']] = frame_labels
-            data[idx][annotation['refs']['ids']] = frame_ids
+            idx_auto = idx if autocomplete else idx+1
             idx += 1
-            # Salva dados do frame anterior
-            if autocomplete:
-                auto_bboxes = frame_bboxes
-                auto_labels = frame_labels
-                auto_ids = frame_ids
 
         elif key == ord('a') and idx > 0:
-            data[idx][annotation['refs']['image']] = frame_path
-            data[idx][annotation['refs']['bboxes']] = frame_bboxes
-            data[idx][annotation['refs']['labels']] = frame_labels
-            data[idx][annotation['refs']['ids']] = frame_ids
+            idx_auto = idx if autocomplete else idx-1
             idx -= 1
-            # Salva dados do frame anterior
-            if autocomplete:
-                auto_bboxes = frame_bboxes
-                auto_labels = frame_labels
-                auto_ids = frame_ids
-
-        elif key == ord('z'):
-            frame_bboxes = []
-            frame_labels = []
-            frame_ids = []
-            if autocomplete:
-                auto_bboxes = []
-                auto_labels = []
-                auto_ids = []
-            print("Dados excluidos no frame:", frame_path)
 
         elif key == ord('e'):
+            data['bboxes'][idx] = []
+            data['labels'][idx] = []
+            data['ids'][idx] = []
+            idx_auto = idx
+            print("Dados excluidos no frame:", frame_path)
+
+        if key == ord('s'):
             # Select ROI
             print()
-            cv2.putText(frame, "Selecione a ROI...", (5, 15), font, font_scale, color, thickness, line)
+            cv2.putText(
+                frame, "Select a ROI and then press SPACE or ENTER button!",
+                (5, 15), font, font_scale, color, thickness, line)
+            cv2.putText(
+                frame, "Cancel the selection process by pressing c button!",
+                (5, 35), font, font_scale, color, thickness, line)
             r = cv2.selectROI("frame", frame, showCrosshair=False)
             if r == (0, 0, 0, 0):
                 print("Invalid crop!")
@@ -322,9 +318,9 @@ def main(src, imgfiles, max_objects, autocomplete=None):
                     break
                 elif key == 13:
                     # Atualiza valores de referência
-                    frame_bboxes.append(r)
-                    frame_labels.append(LABELS[int(cv2.getTrackbarPos('label', 'crop'))])
-                    frame_ids.append(int(cv2.getTrackbarPos('id', 'crop')))
+                    data['bboxes'][idx].append(r)
+                    data['labels'][idx].append(LABELS[int(cv2.getTrackbarPos('label', 'crop'))])
+                    data['ids'][idx].append(int(cv2.getTrackbarPos('id', 'crop')))
                     print("Objeto adicionado no frame:", frame_path)
                     break
 
@@ -334,9 +330,9 @@ def main(src, imgfiles, max_objects, autocomplete=None):
             mouse = CallbackMouse(window="frame")
 
         # Salva dados no arquivo JSON
-        if key != -1 or mouse.editing_id:
+        if key != -1:
             annotation['data'] = data
-            save_json(filename, annotation, indent=True, message=False)
+            save_json(filename, annotation, indent=False, message=False)
 
 
 if __name__ == '__main__':
