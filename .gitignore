@@ -133,4 +133,3 @@ datasets/*
 mot-challenge/TrackEval-master
 mot-challenge/data
 tox.ini
-src/mot-pis-tools/data

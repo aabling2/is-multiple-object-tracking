@@ -22,7 +22,7 @@ class YOLO():
             self.class_list = [cname.strip() for cname in f.readlines()]
 
         # Carrega modelo
-        self.net = cv2.dnn.readNet(model)
+        self.net = cv2.dnn.readNetFromONNX(model)
         self._config_net()
 
     def _config_net(self):

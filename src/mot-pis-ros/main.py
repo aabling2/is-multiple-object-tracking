@@ -120,8 +120,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Open Video Deep SORT")
     parser.add_argument("--test", action="store_true", help="Executa teste local.")
     parser.add_argument("--video", type=str, required=True, help="Fonte de vídeo.")
-    parser.add_argument("--model", type=str, default="../datasets/YOLO/yolov5/yolov5s.onnx", help="Modelo treinado.")
-    parser.add_argument("--classes", type=str, default="../datasets/YOLO/yolov5/classes.txt", help="Lista de classes.")
+    parser.add_argument("--model", type=str, default="../../datasets/YOLO/yolov5/yolov5n.onnx", help="Modelo treinado.")
+    parser.add_argument("--classes", type=str, default="../../datasets/YOLO/yolov5/classes.txt", help="Lista de classes.")
     parser.add_argument("--gpu", action="store_true", default=False, help="Usa GPU como backend.")
     args = parser.parse_args()
 
