@@ -87,6 +87,6 @@ class CrossCorrelationID():
                 t.coef = match_score
                 t.global_id = t1.global_id
 
-        ids = [t.global_id for t in tracked_ids]
+        ids = [[t.global_id for t in tracked_ids if t.local_id == i] for i in range(n)]
 
         return ids

@@ -107,6 +107,11 @@ class YOLO():
         self.detections = [Detection(box, conf, feature) for box in boxes]
         self.classids = class_ids
 
+        if draw:
+            self.draw(frame)
+
+        return self.detections
+
     # Desenha detecções
     def draw(self, frame):
         for classid, detection in zip(self.classids, self.detections):

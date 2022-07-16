@@ -3,7 +3,7 @@ import os
 import cv2
 import argparse
 import numpy as np
-from re_id.correlation import CrossCorrelationID
+from src.mot_pis_ros.re_id.correlation import CrossCorrelationID
 
 
 def parse_args():
