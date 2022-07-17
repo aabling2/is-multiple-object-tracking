@@ -1,9 +1,9 @@
-#!/usr/bin/env python3
 import cv2
 import numpy as np
+from detection import Detection
 
 
-class YOLO():
+class cvYOLO():
     def __init__(self, model, classes, gpu=False):
         self.input_width = 640
         self.input_height = 640
@@ -104,8 +104,10 @@ class YOLO():
 
         conf = 1.
         feature = [-1, -1, -1]
-        self.detections = [Detection(box, conf, feature) for box in boxes]
         self.classids = class_ids
+        self.detections = [
+            Detection(id, box, conf, feature, self.class_list[id])
+            for box, id in zip(boxes, class_ids)]
 
         if draw:
             self.draw(frame)
@@ -114,62 +116,12 @@ class YOLO():
 
     # Desenha detecções
     def draw(self, frame):
-        for classid, detection in zip(self.classids, self.detections):
-            box = detection.box
-            color = self.colors[int(classid) % len(self.colors)]
-            cv2.rectangle(frame, box, color, 2)
-            cv2.rectangle(
-                frame, (box[0], box[1] - 20),
-                (box[0] + box[2], box[1]), color, -1)
-            cv2.putText(
-                frame, self.class_list[classid],
-                (box[0], box[1] - 10), cv2.FONT_HERSHEY_SIMPLEX,
-                .5, (0, 0, 0))
-
-
-class Detection(object):
-    """
-    This class represents a bounding box detection in a single image.
-
-    Parameters
-    ----------
-    tlwh : array_like
-        Bounding box in format `(x, y, w, h)`.
-    confidence : float
-        Detector confidence score.
-    feature : array_like
-        A feature vector that describes the object contained in this image.
-
-    Attributes
-    ----------
-    tlwh : ndarray
-        Bounding box in format `(top left x, top left y, width, height)`.
-    confidence : ndarray
-        Detector confidence score.
-    feature : ndarray | NoneType
-        A feature vector that describes the object contained in this image.
-
-    """
-
-    def __init__(self, tlwh, confidence, feature):
-        self.box = tlwh
-        self.tlwh = np.asarray(tlwh, dtype=np.float)
-        self.confidence = float(confidence)
-        self.feature = np.asarray(feature, dtype=np.float32)
-
-    def to_tlbr(self):
-        """Convert bounding box to format `(min x, min y, max x, max y)`, i.e.,
-        `(top left, bottom right)`.
-        """
-        ret = self.tlwh.copy()
-        ret[2:] += ret[:2]
-        return ret
-
-    def to_xyah(self):
-        """Convert bounding box to format `(center x, center y, aspect ratio,
-        height)`, where the aspect ratio is `width / height`.
-        """
-        ret = self.tlwh.copy()
-        ret[:2] += ret[2:] / 2
-        ret[2] /= ret[3]
-        return ret
+        for detection in self.detections:
+            box = np.int32(detection.to_tlbr())
+            label = detection.label
+            id = detection.id
+            np.random.seed(id)
+            color = [int(x) for x in np.random.randint(0, 255, size=(3, ))]
+            cv2.rectangle(frame, box[:2], box[2:4], color, 2)
+            cv2.rectangle(frame, (box[0]-1, box[1] - 14), (box[2]+1, box[1]), color, -1)
+            cv2.putText(frame, label, (box[0], box[1] - 4), cv2.FONT_HERSHEY_SIMPLEX, .5, (0, 0, 0))

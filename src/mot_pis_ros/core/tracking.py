@@ -10,6 +10,7 @@ class IntelligentSpaceMOT():
         self.trackers = None  # Rastreadores
         self.reid = CrossCorrelationID()  # ReID multicam
         self.ids = []  # ids multicâmera
+        self.labels = []  # labels conforme classes
         self.bboxes = []  # bbox multicâmera
 
     def _init_mem(self, num_src):
@@ -24,13 +25,15 @@ class IntelligentSpaceMOT():
             self._init_mem(len(frames))
 
         # Atualiza tracking
-        bboxes = []
         ids = []
+        labels = []
+        bboxes = []
         for tracker, img, dets in zip(self.trackers, frames, detections):
             # Atualiza rastradores
             tracker.update(img, dets)
-            bboxes.append([np.int32(t.to_tlbr()) for t in tracker.tracks])
             ids.append([t.track_id for t in tracker.tracks])
+            labels.append([t.label for t in tracker.tracks])
+            bboxes.append([np.int32(t.to_tlbr()) for t in tracker.tracks])
 
         # Atualiza ReID
         if reid:
@@ -40,13 +43,14 @@ class IntelligentSpaceMOT():
 
         # Atualiza variáveis
         self.bboxes = bboxes
+        self.labels = labels
 
     def draw(self, frames):
         # Desenha bboxes de detecção
         font = cv2.FONT_HERSHEY_SIMPLEX
         font_scale = 0.5
-        for frame, bboxes, ids in zip(frames, self.bboxes, self.ids):
-            for box, id in zip(bboxes, ids):
+        for frame, bboxes, ids, labels in zip(frames, self.bboxes, self.ids, self.labels):
+            for box, id, label in zip(bboxes, ids, labels):
                 pt1 = box[0:2]
                 pt2 = box[2:4]
 
@@ -57,7 +61,7 @@ class IntelligentSpaceMOT():
 
                 # Label
                 cv2.rectangle(frame, (pt1[0], pt1[1]-20), (pt2[0], pt1[1]), color, -1)
-                cv2.putText(frame, str(id), (pt1[0], pt1[1]-10), font, font_scale, (0, 0, 0))
+                cv2.putText(frame, label, (pt1[0], pt1[1]-6), font, font_scale, (0, 0, 0))
 
                 # ID de referência do objeto
                 cv2.rectangle(frame, (pt2[0]-2-12*len(str(id)), pt1[1]-19), (pt2[0]-1, pt1[1]-1), (50, 50, 50), -1)

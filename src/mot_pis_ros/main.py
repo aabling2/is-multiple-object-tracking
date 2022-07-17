@@ -2,9 +2,10 @@
 import os
 import cv2
 import argparse
-from yolo_detector.cv_yolo import YOLO
 from .core.tracking import IntelligentSpaceMOT
 from .core.image import map_cam_image_files
+# from yolo_detector.cv_yolo import cvYOLO
+from yolo_detector.torch_yolo import torchYOLOv5
 
 
 def main(source, detector):
@@ -21,6 +22,7 @@ def main(source, detector):
     img_files = map_cam_image_files(source, ext='jpeg')
 
     resized = False
+    delay = 10
 
     for samples in img_files:
 
@@ -32,13 +34,13 @@ def main(source, detector):
 
         # Obtém anotação do detector
         # detector = decoder.consume_annotation()
-        detections = [detector.detect(frame, draw=True) for frame in frames]
+        detections = [detector.detect(frame, draw=False) for frame in frames]
 
         # Atualiza rastreio
         tracker.update(frames, detections, reid=False)
 
         # Desenha detecções
-        # tracker.draw(frames)
+        tracker.draw(frames)
 
         # Objetos de saída do rastreio
         # encoder.publish_annotation(objects=tracker.tracks)
@@ -54,9 +56,11 @@ def main(source, detector):
         print("Source:", samples)
 
         # Key
-        key = cv2.waitKey(10)
+        key = cv2.waitKey(delay)
         if key == 27:
             break
+        elif key == 32:
+            delay = 0 if delay > 0 else 10
 
     cv2.destroyAllWindows()
     print("\nFinish!")
@@ -71,16 +75,14 @@ if __name__ == "__main__":
     # Argumentos de entrada
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--src", type=str, required=True, help="Fonte de vídeo.")
-    parser.add_argument("--model", type=str, default="../../datasets/YOLO/yolov5/yolov5n.onnx", help="Modelo treinado.")
-    parser.add_argument("--classes", type=str, default="../../datasets/YOLO/yolov5/classes.txt", help="Lista de classes.")
+    parser.add_argument("--model", type=str, default="yolov5s", help="Modelo treinado.")
+    parser.add_argument("--classes", type=str, default="classes.txt", help="Lista de classes.")
     parser.add_argument("--gpu", action="store_true", default=False, help="Usa GPU como backend.")
     args = parser.parse_args()
 
     # Objeto de detecção
-    detector = YOLO(
-        model=args.model,
-        classes=args.classes,
-        gpu=args.gpu)
+    # detector = cvYOLO(model=args.model, classes=args.classes, gpu=args.gpu)
+    detector = torchYOLOv5(model=args.model, target_classes=['person'], thresh_confidence=0.7)
 
     # Framework de detecção e rastreio
     main(source=args.src, detector=detector)
