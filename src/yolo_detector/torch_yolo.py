@@ -74,9 +74,9 @@ class torchYOLOv5():
             indexes = indexes[nms_indexes]
 
         # Formata detecções
-        conf, feature = 1, [-1, -1, -1]  # valores fixados para teste
+        feature = [-1, -1, -1]  # valores fixados para teste
         self.detections = [
-            Detection(int(classids[idx]), boxes[idx], conf, feature, labels[idx])
+            Detection(int(classids[idx]), boxes[idx], confidences[idx], feature, labels[idx])
             for idx in indexes]
 
         if draw:

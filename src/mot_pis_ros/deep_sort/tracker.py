@@ -40,8 +40,7 @@ class DeepSORT:
     """
 
     def __init__(self, max_iou_distance=0.7, max_age=30, n_init=3, matching_threshold=0.2, budget=None):
-        self.metric = NearestNeighborDistanceMetric(
-            "cosine", matching_threshold, budget)
+        self.metric = NearestNeighborDistanceMetric("cosine", matching_threshold, budget)
         self.max_iou_distance = max_iou_distance
         self.max_age = max_age
         self.n_init = n_init
