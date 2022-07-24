@@ -1,6 +1,5 @@
 # vim: expandtab:ts=4:sw=4
 from __future__ import absolute_import
-import cv2
 import numpy as np
 from . import kalman_filter
 from . import linear_assignment
@@ -57,7 +56,7 @@ class DeepSORT:
         for track in self.tracks:
             track.predict(self.kf)
 
-    def update(self, frame, detections):
+    def update(self, detections):
         """Perform measurement update and track management.
 
         Parameters
@@ -140,13 +139,3 @@ class DeepSORT:
             mean, covariance, self._next_id, self.n_init, self.max_age,
             detection.feature, detection.label))
         self._next_id += 1
-
-    def draw(self, frame):
-        # Desenha detecções
-        for t in self.tracks:
-            bbox = np.int32(t.to_tlwh())
-            cv2.rectangle(frame, bbox, (0, 0, 0), 2)
-            cv2.putText(
-                frame, str(t.track_id),
-                (bbox[0]+2, bbox[1]+15), cv2.FONT_HERSHEY_SIMPLEX,
-                .5, (0, 0, 0))

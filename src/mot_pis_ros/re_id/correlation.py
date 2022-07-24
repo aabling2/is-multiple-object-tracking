@@ -49,44 +49,82 @@ class CrossCorrelationID():
 
         return np.round(np.max(coef), 3)
 
-    def apply(self, frames, detections):
+    def apply(self, frames, multiboxes, old_ids):
 
-        # Extração de features e ids dos objetos
-        n, gid = 0, 0
-        features, tracked_ids = [], []
-        for img, bboxes in zip(frames, detections):
-            samples = self._extract_features(img, bboxes)
-            features.append(samples)
-            for i in range(len(samples)):
-                tracked_ids.append(TrackedID())
-                t = tracked_ids[-1]
-                t.src = n
-                t.local_id = i
-                t.global_id = gid
-                gid += 1
-            n += 1
+        # Extrai features
+        features, qtds, clusters = [], [], []
+        ref = 0
+        for img, boxes in zip(frames, multiboxes):
+            features.extend(self._extract_features(img, boxes))
+            qtds.append(len(boxes))
+            clusters.extend([ref]*qtds[-1])
+            ref += 1
 
-        # Compara features
-        for t1 in tracked_ids:
-            src_ref = 0
-            score = []
-            for t2 in tracked_ids:
-
-                if t1.src == t2.src:
-                    score.append(-1.)
+        # Calcula métricas
+        M = sum(qtds)
+        global_cost_matrix = np.zeros((M, M))
+        peers = []
+        thresh = 0.2
+        clusters = np.array(clusters)
+        for i in range(M):
+            for j in range(M):
+                if i == j or (i, j) in peers or clusters[i] == clusters[j]:
                     continue
 
-                coef = self._calc_correlation(features[t1.src][t1.local_id], features[t2.src][t2.local_id])
-                score.append(coef)
-                src_ref += 1
+                # Calcula métrica de correlação
+                coef = self._calc_correlation(features[i], features[j])
 
-            match_id = np.argmax(score)
-            match_score = score[match_id]
-            t = tracked_ids[match_id]
-            if match_score > 0. and match_score > t.coef:
-                t.coef = match_score
-                t.global_id = t1.global_id
+                # Aplica threshold
+                global_cost_matrix[i][j] = coef if coef >= thresh else 0
+                peers.extend([(i, j), (j, i)])
 
-        ids = [[t.global_id for t in tracked_ids if t.local_id == i] for i in range(n)]
+                # Reset min values row
+                pack_idxs = clusters == clusters[j]
+                pack_values = global_cost_matrix[i, pack_idxs]
+                if np.count_nonzero(pack_values) > 1:
+                    min_idxs = pack_values < np.max(pack_values)
+                    pack_values[min_idxs] = 0.
+                    global_cost_matrix[i, pack_idxs] = pack_values
 
-        return ids
+                # Reset min values col
+                pack_idxs = clusters == clusters[i]
+                pack_values = global_cost_matrix[pack_idxs, j]
+                if np.count_nonzero(pack_values) > 1:
+                    min_idxs = pack_values < np.max(pack_values)
+                    pack_values[min_idxs] = 0.
+                    global_cost_matrix[pack_idxs, j] = pack_values
+
+        matches = np.where(global_cost_matrix > 0)
+        removes = []
+        for i in range(len(matches[0])):
+            if matches[0][i] in matches[1][:i]:
+                corresp = np.where(matches[1] == matches[0][i])[0][0]
+                matches[0][i] = matches[0][corresp]
+
+            if matches[1][i] in matches[1][:i]:
+                removes.append(i)
+
+        matches = np.delete(matches, removes, axis=1)
+
+        print(global_cost_matrix, matches)
+
+        new_ids = old_ids.copy()
+        next_val = max(matches[0]) + 1
+        idx = 0
+        for i, ids in enumerate(old_ids):
+            for j, id in enumerate(ids):
+                if idx in matches[0]:
+                    new_ids[i][j] = idx
+
+                elif idx in matches[1]:
+                    new_ids[i][j] = int(matches[0][matches[1] == idx])
+
+                else:
+                    new_ids[i][j] = next_val
+                    next_val += 1
+
+                idx += 1
+
+        print("new ids", new_ids)
+
+        return new_ids

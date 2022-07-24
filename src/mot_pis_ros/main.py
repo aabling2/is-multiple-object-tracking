@@ -2,13 +2,12 @@
 import os
 import cv2
 import argparse
-from .core.tracking import IntelligentSpaceMOT
-from .core.image import map_cam_image_files
-# from yolo_detector.cv_yolo import cvYOLO
-from yolo_detector.torch_yolo import torchYOLOv5
+from core.multitracking import IntelligentSpaceMOT
+from core.image import map_cam_image_files
+from yolo.torch_yolo import torchYOLOv5
 
 
-def main(source, detector, deep_sort_model=None):
+def main(source, detector, deep_model=None, deep=False, reid=False):
     """try:
         from is_msgs import decoder, encoder
     except Exception as e:
@@ -16,13 +15,13 @@ def main(source, detector, deep_sort_model=None):
         return"""
 
     # Objeto de rastreio
-    tracker = IntelligentSpaceMOT(deep_model=None)
+    multitracker = IntelligentSpaceMOT(deep_model=deep_model, deep=deep, reid=reid)
 
     # Mapeia arquivos de imagens para carregar
     img_files = map_cam_image_files(source, ext='jpeg')
 
     scale = 0.5
-    delay = 10
+    delay = 0
 
     for samples in img_files:
 
@@ -39,10 +38,10 @@ def main(source, detector, deep_sort_model=None):
         detections = [detector.detect(frame, draw=False) for frame in frames]
 
         # Atualiza rastreio
-        tracker.update(frames, detections, reid=True)
+        multitracker.update(frames, detections)
 
         # Desenha detecções
-        tracker.draw(frames, detections=detections)
+        multitracker.draw(frames, detections=detections)
 
         # Objetos de saída do rastreio
         # encoder.publish_annotation(objects=tracker.tracks)
@@ -57,10 +56,7 @@ def main(source, detector, deep_sort_model=None):
             output = cv2.vconcat([
                 cv2.hconcat(src=frames[0:2]),
                 cv2.hconcat(src=frames[2:4])])
-
         cv2.imshow("Result", output)
-
-        # Fonte de imagem
         # print("Source:", samples)
 
         # Key
@@ -85,16 +81,16 @@ if __name__ == "__main__":
     # Argumentos de entrada
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--src", type=str, required=True, help="Fonte de vídeo.")
+    parser.add_argument("--deep", action='store_true', default=False, help="Habilita parte deep do rastreio.")
+    parser.add_argument("--reid", action='store_true', default=False, help="Habilita reidentificação.")
     parser.add_argument("--model", type=str, default="yolov5s", help="Modelo treinado.")
-    parser.add_argument("--classes", type=str, default="classes.txt", help="Lista de classes.")
-    parser.add_argument("--gpu", action="store_true", default=False, help="Usa GPU como backend.")
     parser.add_argument(
-        "--tracking_model", type=str, default="mars-small128.pb", help="Modelo pré-treinado para rastreio.")
+        "--deep_model", type=str, default="../../datasets/DeepSORT/networks/mars-small128.pb",
+        help="Modelo pré-treinado para rastreio.")
     args = parser.parse_args()
 
     # Objeto de detecção
-    # detector = cvYOLO(model=args.model, classes=args.classes, gpu=args.gpu)
     detector = torchYOLOv5(model=args.model, target_classes=['person'], thresh_confidence=0.7)
 
     # Framework de detecção e rastreio
-    main(source=args.src, detector=detector, deep_sort_model=args.tracking_model)
+    main(source=args.src, detector=detector, deep_model=args.deep_model, deep=args.deep, reid=args.reid)
