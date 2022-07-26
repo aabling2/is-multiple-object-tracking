@@ -33,10 +33,10 @@ class IntelligentSpaceMOT():
             DeepSORT(max_iou_distance=0.5, max_age=30, n_init=1, matching_threshold=0.2)
             for _ in range(num_src)]
 
-    def _update_track_ids(self, multitrackers, ids):
-        for trackers in multitrackers:
-            for t in trackers.tracks:
-                t.track_id = 0
+    def _update_track_ids(self, multitrackers, multids):
+        for trackers, ids in zip(multitrackers, multids):
+            for t, id in zip(trackers.tracks, ids):
+                t.track_id = id
 
     def update(self, frames, detections):
 

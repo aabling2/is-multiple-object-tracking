@@ -88,43 +88,33 @@ class CrossCorrelationID():
 
                 # Reset min values col
                 pack_idxs = clusters == clusters[i]
-                pack_values = global_cost_matrix[pack_idxs, j]
+                pack_values = global_cost_matrix[:, j]
                 if np.count_nonzero(pack_values) > 1:
                     min_idxs = pack_values < np.max(pack_values)
                     pack_values[min_idxs] = 0.
-                    global_cost_matrix[pack_idxs, j] = pack_values
+                    global_cost_matrix[:, j] = pack_values
 
+        # Associações por métrica
         matches = np.where(global_cost_matrix > 0)
-        removes = []
-        for i in range(len(matches[0])):
-            if matches[0][i] in matches[1][:i]:
-                corresp = np.where(matches[1] == matches[0][i])[0][0]
-                matches[0][i] = matches[0][corresp]
 
-            if matches[1][i] in matches[1][:i]:
-                removes.append(i)
+        # Atribui ids
+        raw_ids = np.array([id for ids in old_ids for id in ids])
+        idx_matches, idx_unmatches = [], []
+        for i in range(M):
+            if i in matches[1]:
+                raw_ids[i] = raw_ids[matches[0][np.where(matches[1] == i)[0][0]]]
+                idx_matches.append(i)
+            elif clusters[i] != 0:
+                idx_unmatches.append(i)
 
-        matches = np.delete(matches, removes, axis=1)
+        next_val = len(idx_matches)
+        for i in range(M):
+            if i in idx_unmatches:
+                raw_ids[i] = next_val
+                next_val += 1
 
-        print(global_cost_matrix, matches)
-
-        new_ids = old_ids.copy()
-        next_val = max(matches[0]) + 1
-        idx = 0
-        for i, ids in enumerate(old_ids):
-            for j, id in enumerate(ids):
-                if idx in matches[0]:
-                    new_ids[i][j] = idx
-
-                elif idx in matches[1]:
-                    new_ids[i][j] = int(matches[0][matches[1] == idx])
-
-                else:
-                    new_ids[i][j] = next_val
-                    next_val += 1
-
-                idx += 1
-
-        print("new ids", new_ids)
+        # Mapeia raw ids para clusters
+        N = len(multiboxes)
+        new_ids = [raw_ids[np.where(clusters == i)] for i in range(N)]
 
         return new_ids
