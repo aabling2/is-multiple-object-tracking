@@ -38,11 +38,13 @@ class DeepSORT:
 
     """
 
-    def __init__(self, max_iou_distance=0.7, max_age=30, n_init=3, matching_threshold=0.2, budget=None):
+    def __init__(self, max_iou_distance=0.7, max_age=30, n_init=3, matching_threshold=0.2, budget=None, reid=None, ref=0):
         self.metric = NearestNeighborDistanceMetric("cosine", matching_threshold, budget)
         self.max_iou_distance = max_iou_distance
         self.max_age = max_age
         self.n_init = n_init
+        self.reid = reid
+        self.ref = ref
 
         self.kf = kalman_filter.KalmanFilter()
         self.tracks = []
@@ -71,6 +73,11 @@ class DeepSORT:
         # Run matching cascade.
         matches, unmatched_tracks, unmatched_detections = self._match(detections)
 
+        # Faz associação para reidentificação de detecções
+        ids = [None]*len(detections)
+        if self.reid is not None:
+            self.reid.associate(detections, self.ref, unmatched_detections, ids)
+
         # Update track set.
         for track_idx, detection_idx in matches:
             self.tracks[track_idx].update(
@@ -78,7 +85,7 @@ class DeepSORT:
         for track_idx in unmatched_tracks:
             self.tracks[track_idx].mark_missed()
         for detection_idx in unmatched_detections:
-            self._initiate_track(detections[detection_idx])
+            self._initiate_track(detections[detection_idx], ids[detection_idx])
         self.tracks = [t for t in self.tracks if not t.is_deleted()]
 
         # Update distance metric.
@@ -133,9 +140,13 @@ class DeepSORT:
         unmatched_tracks = list(set(unmatched_tracks_a + unmatched_tracks_b))
         return matches, unmatched_tracks, unmatched_detections
 
-    def _initiate_track(self, detection):
+    def _initiate_track(self, detection, id=None):
+
+        # Cria rastreador
+        target_id = self._next_id if id is None else id
         mean, covariance = self.kf.initiate(detection.to_xyah())
         self.tracks.append(Track(
-            mean, covariance, self._next_id, self.n_init, self.max_age,
+            mean, covariance, target_id, self.n_init, self.max_age,
             detection.feature, detection.label))
+
         self._next_id += 1

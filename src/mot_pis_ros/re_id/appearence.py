@@ -36,8 +36,8 @@ class AppearenceMatcher():
         # Roda métrica de associação para cada grupo de rastreadores
         for i in range(N):
             for j in range(N):
-                """if i == j:
-                    continue"""
+                if i == j:
+                    continue
 
                 matches_a, unmatched_tracks_a, unmatched_detections = linear_assignment.matching_cascade(
                     distance_metric=gated_metric,
@@ -46,6 +46,6 @@ class AppearenceMatcher():
                     tracks=multitrackers[i].tracks, detections=multitrackers[j].tracks,
                     track_indices=confirmed_tracks[i])
 
-                print("test", matches_a, unmatched_tracks_a, unmatched_detections)
+                print("matches", matches_a, unmatched_tracks_a, unmatched_detections)
 
         return []

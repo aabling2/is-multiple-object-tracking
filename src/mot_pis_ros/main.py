@@ -15,7 +15,7 @@ def main(source, detector, deep_model=None, deep=False, reid=False):
         return"""
 
     # Objeto de rastreio
-    multitracker = IntelligentSpaceMOT(deep_model=deep_model, deep=deep, reid=reid)
+    multicam_tracker = IntelligentSpaceMOT(deep_model=deep_model, deep=deep, reid=reid)
 
     # Mapeia arquivos de imagens para carregar
     img_files = map_cam_image_files(source, ext='jpeg')
@@ -35,13 +35,13 @@ def main(source, detector, deep_model=None, deep=False, reid=False):
 
         # Obtém anotação do detector
         # detector = decoder.consume_annotation()
-        detections = [detector.detect(frame, draw=False) for frame in frames]
+        detections = [detector.detect(frame) for frame in frames]
 
         # Atualiza rastreio
-        multitracker.update(frames, detections)
+        multicam_tracker.update(frames, detections)
 
         # Desenha detecções
-        multitracker.draw(frames, detections=detections)
+        multicam_tracker.draw(frames, detections=detections)
 
         # Objetos de saída do rastreio
         # encoder.publish_annotation(objects=tracker.tracks)

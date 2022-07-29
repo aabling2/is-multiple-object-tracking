@@ -10,6 +10,7 @@ class IntelligentSpaceMOT():
         self.ids = []  # ids multicâmera
         self.labels = []  # labels conforme classes
         self.bboxes = []  # bbox multicâmera
+        self.reid = None if reid is False else True
 
         if str(deep_model) != 'None' and deep:
             print("Tracking DeepSORT with deep part.")
@@ -18,25 +19,16 @@ class IntelligentSpaceMOT():
         else:
             self.encoder = None
 
-        if str(deep_model) != 'None' and reid:
-            print("Tracking with ReID.")
-            from re_id.correlation import CrossCorrelationID
-            self.reid = CrossCorrelationID()  # ReID multicam
-            # from re_id.appearence import AppearenceMatcher
-            # self.reid = AppearenceMatcher(deep_model=deep_model, matching_threshold=0.2, budget=None, max_depth=1)
-        else:
-            self.reid = None
-
     def _init_mem(self, num_src):
-        # Rastreadores
-        self.trackers = [
-            DeepSORT(max_iou_distance=0.5, max_age=30, n_init=1, matching_threshold=0.2)
-            for _ in range(num_src)]
+        # Inicia objeto de reidentificação
+        if self.reid is True:
+            from re_id.correlation import CrossCorrelationID
+            self.reid = CrossCorrelationID(threshold=0.2, qtd=num_src)  # ReID multicam
 
-    def _update_track_ids(self, multitrackers, multids):
-        for trackers, ids in zip(multitrackers, multids):
-            for t, id in zip(trackers.tracks, ids):
-                t.track_id = id
+        # Rastreadores com ReID embutido
+        self.trackers = [
+            DeepSORT(max_iou_distance=0.5, max_age=30, n_init=1, matching_threshold=0.2, reid=self.reid, ref=i)
+            for i in range(num_src)]
 
     def update(self, frames, detections):
 
@@ -44,10 +36,15 @@ class IntelligentSpaceMOT():
         if self.trackers is None:
             self._init_mem(len(frames))
 
+        # Atualização global reid
+        if self.reid is not None:
+            self.reid.update_global(frames, self.trackers)
+
         # Atualiza tracking de cada imagem
         ids = []
         labels = []
         bboxes = []
+        #cam = 0
         for tracker, img, dets in zip(self.trackers, frames, detections):
             # Extração de features para atualizar nos objetos detectados
             if self.encoder is not None:
@@ -61,17 +58,15 @@ class IntelligentSpaceMOT():
             labels.append([t.label for t in tracker.tracks])
             bboxes.append([np.int32(t.to_tlbr()) for t in tracker.tracks])
 
-        # Atualiza ReID
-        if self.reid is not None:
-            self.ids = self.reid.apply(frames, bboxes, ids)
-            # self.ids = self.reid.apply(images=frames, multitrackers=self.trackers)
-            # self._update_track_ids(self.trackers, self.ids)
-        else:
-            self.ids = ids
+            """# Atualiza frames e rastreadores no ReID
+            if self.reid is not None:
+                self.reid.update(cam, tracker)
+                cam += 1"""
 
         # Atualiza variáveis
         self.bboxes = bboxes
         self.labels = labels
+        self.ids = ids
 
     def draw(self, frames, detections=[], font_scale=0.5, font=cv2.FONT_HERSHEY_SIMPLEX):
 
