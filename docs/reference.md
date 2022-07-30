@@ -23,8 +23,16 @@ DeepSORT: https://github.com/nwojke/deep_sort
 
 # Datasets
 
+## UFES
+
+Acessar storage do LabVisio para baixar imagens de multiplas câmeras já salvas, com VPN previamente configurada pela equipe do laboratório.
+
 ## EPFL Multi-Camera
 
 EPFL-RLC Multi-Camera Dataset: https://www.epfl.ch/labs/cvlab/data/data-rlc/
 
 Multi-view Multi-class Detection dataset: https://www.epfl.ch/labs/cvlab/data/data-multiclass/
+
+# Modelos pré-treinados
+
+osnet_x0_25_msmt17: https://drive.google.com/uc?id=1MLC2lKnQvAQgBKZP1EXB6UdmqujY9qVd

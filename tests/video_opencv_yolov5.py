@@ -164,10 +164,10 @@ def parse_args():
     parser.add_argument(
         "--video", type=str, required=True, help="Fonte de vídeo.")
     parser.add_argument(
-        "--model", type=str, default="../datasets/YOLO/yolov5/yolov5s.onnx",
+        "--model", type=str, default="../models/yolov5s.onnx",
         help="Modelo treinado.")
     parser.add_argument(
-        "--classes", type=str, default="../datasets/YOLO/yolov5/classes.txt",
+        "--classes", type=str, default="../models/coco.names",
         help="Lista de classes.")
     return parser.parse_args()
 

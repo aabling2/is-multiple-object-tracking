@@ -71,7 +71,7 @@ class torchYOLOv5():
             [int(row[0]*x_shape), int(row[1]*y_shape), int(row[2]*x_shape), int(row[3]*y_shape)]
             for row in data])  # tlbr
         if boxes.size > 0:
-            boxes[:, 2:4] = boxes[:, 2:4] - boxes[:, 0:2]  # xywh
+            boxes[:, 2:4] = boxes[:, 2:4] - boxes[:, 0:2]  # tlwh
 
         # Filtra objetos pela confiança e classe
         indexes = self._selective_objects(confidences, labels)
