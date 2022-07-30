@@ -23,7 +23,7 @@ class IntelligentSpaceMOT():
         # Inicia objeto de reidentificação
         if self.reid is True:
             from re_id.correlation import CrossCorrelationID
-            self.reid = CrossCorrelationID(threshold=0.2, qtd=num_src)  # ReID multicam
+            self.reid = CrossCorrelationID(threshold=0.0, qtd=num_src)  # ReID multicam
 
         # Rastreadores com ReID embutido
         self.trackers = [
@@ -44,7 +44,6 @@ class IntelligentSpaceMOT():
         ids = []
         labels = []
         bboxes = []
-        #cam = 0
         for tracker, img, dets in zip(self.trackers, frames, detections):
             # Extração de features para atualizar nos objetos detectados
             if self.encoder is not None:
@@ -57,11 +56,6 @@ class IntelligentSpaceMOT():
             ids.append([t.track_id for t in tracker.tracks])
             labels.append([t.label for t in tracker.tracks])
             bboxes.append([np.int32(t.to_tlbr()) for t in tracker.tracks])
-
-            """# Atualiza frames e rastreadores no ReID
-            if self.reid is not None:
-                self.reid.update(cam, tracker)
-                cam += 1"""
 
         # Atualiza variáveis
         self.bboxes = bboxes

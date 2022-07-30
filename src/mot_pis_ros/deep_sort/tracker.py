@@ -143,10 +143,11 @@ class DeepSORT:
     def _initiate_track(self, detection, id=None):
 
         # Cria rastreador
-        target_id = self._next_id if id is None else id
+        track_id = self._next_id if id is None else id
         mean, covariance = self.kf.initiate(detection.to_xyah())
         self.tracks.append(Track(
-            mean, covariance, target_id, self.n_init, self.max_age,
+            mean, covariance, track_id, self.n_init, self.max_age,
             detection.feature, detection.label))
 
-        self._next_id += 1
+        if id is None:
+            self._next_id += 1
