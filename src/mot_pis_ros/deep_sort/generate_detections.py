@@ -5,6 +5,7 @@ import argparse
 import numpy as np
 import cv2
 import tensorflow as tf
+tf = tf.compat.v1
 
 
 def _run_in_batches(f, data_dict, out, batch_size):
@@ -78,9 +79,11 @@ class ImageEncoder(object):
             graph_def.ParseFromString(file_handle.read())
         tf.import_graph_def(graph_def, name="net")
         self.input_var = tf.get_default_graph().get_tensor_by_name(
-            "net/%s:0" % input_name)
+            #"net/%s:0" % input_name)
+            "%s:0" % input_name)
         self.output_var = tf.get_default_graph().get_tensor_by_name(
-            "net/%s:0" % output_name)
+            #"net/%s:0" % output_name)
+            "%s:0" % output_name)
 
         assert len(self.output_var.get_shape()) == 2
         assert len(self.input_var.get_shape()) == 4

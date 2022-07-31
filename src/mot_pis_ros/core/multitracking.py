@@ -1,16 +1,16 @@
 import cv2
 import numpy as np
-from deep_sort.tracker import DeepSORT
 
 
 class IntelligentSpaceMOT():
-    def __init__(self, deep_model=None, reid=False, deep=False):
+    def __init__(self, deep_model=None, reid=False, deep=False, backend='deepsort'):
 
         self.trackers = None  # Rastreadores
         self.ids = []  # ids multicâmera
         self.labels = []  # labels conforme classes
         self.bboxes = []  # bbox multicâmera
         self.reid = None if reid is False else True
+        self.backend = backend
 
         if str(deep_model) != 'None' and deep:
             print("Tracking DeepSORT with deep part.")
@@ -23,12 +23,24 @@ class IntelligentSpaceMOT():
         # Inicia objeto de reidentificação
         if self.reid is True:
             from re_id.correlation import CrossCorrelationID
-            self.reid = CrossCorrelationID(threshold=0.0, qtd=num_src)  # ReID multicam
+            self.reid = CrossCorrelationID(threshold=0.2, qtd=num_src)  # ReID multicam
 
         # Rastreadores com ReID embutido
-        self.trackers = [
-            DeepSORT(max_iou_distance=0.5, max_age=30, n_init=1, matching_threshold=0.2, reid=self.reid, ref=i)
-            for i in range(num_src)]
+        if self.backend == 'deepsort':
+            from deep_sort.tracker import DeepSORT
+            self.trackers = [
+                DeepSORT(
+                    max_iou_distance=0.7, max_age=30, n_init=1, matching_threshold=0.2,
+                    reid=self.reid, ref=i)
+                for i in range(num_src)]
+
+        elif self.backend == 'bytetrack':
+            from bytetrack.tracker.byte_tracker import BYTETracker
+            self.trackers = [
+                BYTETracker(
+                    frame_rate=30, track_thresh=0.5, track_buffer=30, match_tresh=0.8, mot20=False,
+                    reid=self.reid, src_id=i)
+                for i in range(num_src)]
 
     def update(self, frames, detections):
 
@@ -55,7 +67,7 @@ class IntelligentSpaceMOT():
             tracker.update(dets)
             ids.append([t.track_id for t in tracker.tracks])
             labels.append([t.label for t in tracker.tracks])
-            bboxes.append([np.int32(t.to_tlbr()) for t in tracker.tracks])
+            bboxes.append([np.int32(t.tlbr) for t in tracker.tracks])
 
         # Atualiza variáveis
         self.bboxes = bboxes
@@ -64,13 +76,7 @@ class IntelligentSpaceMOT():
 
     def draw(self, frames, detections=[], font_scale=0.5, font=cv2.FONT_HERSHEY_SIMPLEX):
 
-        for frame, all_detections in zip(frames, detections):
-            for detection in all_detections:
-                box = np.int32(detection.to_tlbr())
-                pt1, pt2 = box[0:2], box[2:4]
-                cv2.rectangle(frame, pt1=pt1, pt2=pt2, color=(255, 0, 0), thickness=1)
-
-        # Desenha bboxes de detecção
+        # Desenha bboxes de rastreio
         font = cv2.FONT_HERSHEY_SIMPLEX
         font_scale = 0.4
         for frame, bboxes, ids, labels in zip(frames, self.bboxes, self.ids, self.labels):
@@ -93,3 +99,10 @@ class IntelligentSpaceMOT():
                 pt1, pt2 = (box[0] + label_size[0] + 1, box[1] - 19), (box[0] + label_size[0] + id_size[0], box[1] - 1)
                 cv2.rectangle(frame, pt1, pt2, (50, 50, 50), -1)
                 cv2.putText(frame, sid, (pt1[0], pt2[1]-2), font, font_scale*1.3, (255, 255, 255))
+
+        # Desenha bboxes de detecção
+        for frame, all_detections in zip(frames, detections):
+            for detection in all_detections:
+                box = np.int32(detection.to_tlbr())
+                pt1, pt2 = box[0:2], box[2:4]
+                cv2.rectangle(frame, pt1=pt1, pt2=pt2, color=(0, 255, 255), thickness=1)

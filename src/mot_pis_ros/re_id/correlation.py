@@ -79,7 +79,7 @@ class CrossCorrelationID():
                 continue
 
             # Extrai features das regiões dos objetos rastreados na imagem atual
-            bboxes = [np.int32(t.to_tlwh()) for t in self.trackers[i].tracks]
+            bboxes = [np.int32(t.tlwh) for t in self.trackers[i].tracks]
             features = self._extract_features(self.frames[i], bboxes)
 
             # Calcula matriz de custo local, features de detecção vs features de rastreio
@@ -95,27 +95,28 @@ class CrossCorrelationID():
             map_id_trackers.extend([t.track_id for t in self.trackers[i].tracks])
 
         # Encontra associação entre detecções e objetos rastreados
-        global_cost_matrix = np.vstack(global_cost_matrix)
-        matches = linear_assignment(global_cost_matrix, maximize=True)
-        thresh_matches = np.array(np.where(global_cost_matrix[matches] > self.thresh))
+        if global_cost_matrix != []:
+            global_cost_matrix = np.vstack(global_cost_matrix)
+            matches = linear_assignment(global_cost_matrix, maximize=True)
+            thresh_matches = np.array(np.where(global_cost_matrix[matches] > self.thresh))
 
-        # Define ids dos objetos rastreados às detecções associadas
-        idx_detections = list(matches[1][thresh_matches][0]) if thresh_matches.size > 0 else []
-        idx_trackers = list(matches[0][thresh_matches][0]) if thresh_matches.size > 0 else []
-        for i in range(N):
-            is_matched_id = False
-            if i in idx_detections:
-                # Atribui id de objeto rastreado associado a essa detecção
-                id = map_id_trackers[idx_trackers[idx_detections.index(i)]]
+            # Define ids dos objetos rastreados às detecções associadas
+            idx_detections = list(matches[1][thresh_matches][0]) if thresh_matches.size > 0 else []
+            idx_trackers = list(matches[0][thresh_matches][0]) if thresh_matches.size > 0 else []
+            for i in range(N):
+                is_matched_id = False
+                if i in idx_detections:
+                    # Atribui id de objeto rastreado associado a essa detecção
+                    id = map_id_trackers[idx_trackers[idx_detections.index(i)]]
 
-                # Se não houver reincidência de id na mesma câmera
-                if id not in cam_id_trackers:
-                    ids[idx_undetections[i]] = id
-                    is_matched_id = True
+                    # Se não houver reincidência de id na mesma câmera
+                    if id not in cam_id_trackers:
+                        ids[idx_undetections[i]] = id
+                        is_matched_id = True
 
-            # Se não houve associação entre ids, usa próximo id do registro
-            if not is_matched_id:
-                ids[idx_undetections[i]] = self.next_id
-                self.next_id += 1
+                # Se não houve associação entre ids, usa próximo id do registro
+                if not is_matched_id:
+                    ids[idx_undetections[i]] = self.next_id
+                    self.next_id += 1
 
         return ids
