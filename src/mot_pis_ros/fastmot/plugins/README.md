@@ -1,1 +1,0 @@
-YOLO layer plugins are adapted from [tensorrt_demos](https://github.com/jkjung-avt/tensorrt_demos). The original code is under [MIT License](https://github.com/jkjung-avt/tensorrt_demos/blob/master/LICENSE).

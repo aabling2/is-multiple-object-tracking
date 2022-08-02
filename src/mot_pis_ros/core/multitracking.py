@@ -1,23 +1,16 @@
 import cv2
 import numpy as np
+from bytetrack.tracker.byte_tracker import BYTETracker
 
 
 class IntelligentSpaceMOT():
-    def __init__(self, deep_model=None, reid=False, deep=False, backend='deepsort'):
+    def __init__(self, reid=False):
 
         self.trackers = None  # Rastreadores
         self.ids = []  # ids multicâmera
         self.labels = []  # labels conforme classes
         self.bboxes = []  # bbox multicâmera
         self.reid = None if reid is False else True
-        self.backend = backend
-
-        if str(deep_model) != 'None' and deep:
-            print("Tracking DeepSORT with deep part.")
-            from deep_sort import generate_detections as gdet
-            self.encoder = gdet.create_box_encoder(deep_model, batch_size=1)
-        else:
-            self.encoder = None
 
     def _init_mem(self, num_src):
         # Inicia objeto de reidentificação
@@ -26,21 +19,11 @@ class IntelligentSpaceMOT():
             self.reid = CrossCorrelationID(threshold=0.2, qtd=num_src)  # ReID multicam
 
         # Rastreadores com ReID embutido
-        if self.backend == 'deepsort':
-            from deep_sort.tracker import DeepSORT
-            self.trackers = [
-                DeepSORT(
-                    max_iou_distance=0.7, max_age=30, n_init=1, matching_threshold=0.2,
-                    reid=self.reid, ref=i)
-                for i in range(num_src)]
-
-        elif self.backend == 'bytetrack':
-            from bytetrack.tracker.byte_tracker import BYTETracker
-            self.trackers = [
-                BYTETracker(
-                    frame_rate=30, track_thresh=0.5, track_buffer=30, match_tresh=0.8, mot20=False,
-                    reid=self.reid, src_id=i)
-                for i in range(num_src)]
+        self.trackers = [
+            BYTETracker(
+                frame_rate=30, track_thresh=0.5, track_buffer=30, match_tresh=0.8, mot20=False,
+                reid=self.reid, src_id=i)
+            for i in range(num_src)]
 
     def update(self, frames, detections):
 
@@ -57,13 +40,6 @@ class IntelligentSpaceMOT():
         labels = []
         bboxes = []
         for tracker, img, dets in zip(self.trackers, frames, detections):
-            # Extração de features para atualizar nos objetos detectados
-            if self.encoder is not None:
-                features = self.encoder(img, [d.tlwh for d in dets])
-                for i, feat in enumerate(features):
-                    dets[i].feature = feat
-
-            # Atualiza rastreadores
             tracker.update(dets)
             ids.append([t.track_id for t in tracker.tracks])
             labels.append([t.label for t in tracker.tracks])

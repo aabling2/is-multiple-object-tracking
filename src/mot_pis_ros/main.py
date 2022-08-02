@@ -3,7 +3,6 @@ import os
 import cv2
 import time
 import argparse
-import numpy as np
 from core.multitracking import IntelligentSpaceMOT
 from core.image import map_cam_image_files
 from yolo.torch_yolo import torchYOLOv5
@@ -17,8 +16,7 @@ def main(args):
         return"""
 
     # Objeto de rastreio
-    multicam_tracker = IntelligentSpaceMOT(
-        deep_model=args.deep_model, deep=args.deep, reid=args.reid, backend=args.backend)
+    multicam_tracker = IntelligentSpaceMOT(reid=args.reid)
 
     # Mapeia arquivos de imagens para carregar
     img_files = map_cam_image_files(args.src, ext='jpeg')
@@ -27,6 +25,8 @@ def main(args):
     delay = 0
 
     for samples in img_files:
+
+        start = time.time()
 
         # Obtém imagem
         #frames = decoder.consume_image()
@@ -40,10 +40,8 @@ def main(args):
         #detector = decoder.consume_annotation()
         detections = [detector.detect(frame) for frame in frames]
 
-        # Atualiza rastreio
-        start = time.time()
+        # Atualiza rastreio multicam
         multicam_tracker.update(frames, detections)
-        print("multicam tracker time:", time.time()-start)
 
         # Desenha detecções
         multicam_tracker.draw(frames, detections=detections)
@@ -60,6 +58,8 @@ def main(args):
                 cv2.hconcat(src=frames[2:4])])
         cv2.imshow("Result", output)
         # print("Source:", samples)
+
+        print("FPS:", round(1/(time.time()-start), 2))
 
         # Key
         key = cv2.waitKey(delay)
@@ -84,13 +84,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--max_src", type=int, default=4, help="Quantidade de imagens simultâneas.")
     parser.add_argument("--src", type=str, required=True, help="Fonte de vídeo.")
-    parser.add_argument("--deep", action='store_true', default=False, help="Habilita parte deep do rastreio.")
     parser.add_argument("--reid", action='store_true', default=False, help="Habilita reidentificação.")
     parser.add_argument("--model", type=str, default="yolov5s", help="Modelo treinado.")
-    parser.add_argument(
-        "--deep_model", type=str, default="../../models/mars-small128.pb",
-        help="Modelo pré-treinado para rastreio.")
-    parser.add_argument("--backend", type=str, default="deepsort", help="Backend de rastreio, algoritmo utilizado.")
     args = parser.parse_args()
 
     # Objeto de detecção
