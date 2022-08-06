@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from bytetrack.tracker.byte_tracker import BYTETracker
+from bytetrack.tracker import BYTETracker
 
 
 class IntelligentSpaceMOT():
@@ -11,17 +11,18 @@ class IntelligentSpaceMOT():
         self.labels = []  # labels conforme classes
         self.bboxes = []  # bbox multicâmera
         self.reid = None if reid is False else True
+        self.count_ids = 0
 
     def _init_mem(self, num_src):
         # Inicia objeto de reidentificação
         if self.reid is True:
             from re_id.correlation import CrossCorrelationID
-            self.reid = CrossCorrelationID(threshold=0.2, qtd=num_src)  # ReID multicam
+            self.reid = CrossCorrelationID(threshold=0.3, qtd=num_src)  # ReID multicam
 
         # Rastreadores com ReID embutido
         self.trackers = [
             BYTETracker(
-                frame_rate=30, track_thresh=0.5, track_buffer=30, match_tresh=0.8, mot20=False,
+                frame_rate=30, track_thresh=0.5, track_buffer=30, match_tresh=0.9, fuse=True,
                 reid=self.reid, src_id=i)
             for i in range(num_src)]
 
@@ -49,6 +50,7 @@ class IntelligentSpaceMOT():
         self.bboxes = bboxes
         self.labels = labels
         self.ids = ids
+        self.count_ids = max(max([max(x) for x in ids]), self.count_ids) if ids else self.count_ids
 
     def draw(self, frames, detections=[], font_scale=0.5, font=cv2.FONT_HERSHEY_SIMPLEX):
 
@@ -67,14 +69,14 @@ class IntelligentSpaceMOT():
                 cv2.rectangle(frame, box[:2], box[2:4], color, 2)
 
                 # Label
-                pt1, pt2 = (box[0]-1, box[1] - 20), (box[0] + label_size[0] + id_size[0] + 1, box[1])
+                pt1, pt2 = (box[0]-1, box[1] + 20), (box[0] + label_size[0] + id_size[0] + 1, box[1])
                 cv2.rectangle(frame, pt1, pt2, color, -1)
-                cv2.putText(frame, label, (box[0], box[1] - 7), font, font_scale, (0, 0, 0))
+                cv2.putText(frame, label, (box[0], box[1] + 8), font, font_scale, (0, 0, 0))
 
                 # ID de referência do objeto
-                pt1, pt2 = (box[0] + label_size[0] + 1, box[1] - 19), (box[0] + label_size[0] + id_size[0], box[1] - 1)
+                pt1, pt2 = (box[0] + label_size[0] + 1, box[1] + 19), (box[0] + label_size[0] + id_size[0], box[1] - 1)
                 cv2.rectangle(frame, pt1, pt2, (50, 50, 50), -1)
-                cv2.putText(frame, sid, (pt1[0], pt2[1]-2), font, font_scale*1.3, (255, 255, 255))
+                cv2.putText(frame, sid, (pt1[0], pt2[1]+15), font, font_scale*1.3, (255, 255, 255))
 
         # Desenha bboxes de detecção
         for frame, all_detections in zip(frames, detections):

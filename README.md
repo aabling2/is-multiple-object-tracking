@@ -28,6 +28,5 @@ MOT (Multiple Object Tracking) integrado ao PIS (Programmable Intelligent Space)
 - [x] Desenvolver código para anotação de vídeo, para as câmeras do PIS.
 - [ ] Fazer anotação das imagens do dataset para usar em benchmarks.
 - [ ] Desenvolver benchmark com métricas de desempenho que contemple avaliação de rastreio e re-identificação.
-- [ ] Aplicar benchmark entre métodos de rastreio existentes (DeepSORT, FairMOT, ByteTrack, Tracktor++, StrongSORT, FastMOT).
 - [ ] Melhorar metódo de rastreio para cumprir o objetivo de rastreio e re-identificação em multiplas câmeras.
 - [ ] Desenvolver código para embarcar aplicação como serviço do PIS.

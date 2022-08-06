@@ -22,6 +22,7 @@ class torchYOLOv5():
         self.target_classes = target_classes
         self.thresh_conf = thresh_confidence
         self.NMS = nms
+        self.detections = []
 
         # Extrator de features para rastreio
         if feature_model is not None:
@@ -95,10 +96,10 @@ class torchYOLOv5():
         return self.detections
 
     # Desenha detecções
-    def draw(self, frame, font_scale=0.5):
+    def draw(self, frame, font_scale=0.4):
         for detection in self.detections:
             box = tuple(np.int32(detection.to_tlbr()))
-            label = detection.label
+            label = detection.label + "-" + str(f"{round(detection.confidence, 2)}")
             id = detection.id
             np.random.seed(id)
             color = [np.random.randint(0, 255) for _ in range(3)]
@@ -109,4 +110,4 @@ class torchYOLOv5():
             # Label
             t_size = cv2.getTextSize(label, 0, fontScale=font_scale, thickness=1)[0]
             cv2.rectangle(frame, (box[0]-1, box[1] - 14), (box[0] + t_size[0] + 1, box[1]), color, -1)  # label
-            cv2.putText(frame, label, (box[0], box[1] - 4), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 0, 0))
+            cv2.putText(frame, label, (box[0], box[1] - 4), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255))

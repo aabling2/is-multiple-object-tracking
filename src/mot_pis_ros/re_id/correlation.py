@@ -15,7 +15,7 @@ class CrossCorrelationID():
 
         self.box_type = box_type
         self.ids = []
-        self.next_id = 0
+        self.next_id = 1
         self.thresh = threshold
         self.frames = [None]*qtd
         self.trackers = [None]*qtd
