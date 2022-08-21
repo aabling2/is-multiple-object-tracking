@@ -1,5 +1,5 @@
 from is_wire.core import Channel, Subscription
-from is_msgs.common_pb2 import Image, ObjectAnnotation
+from is_msgs.image_pb2 import Image, ObjectAnnotation
 
 
 def consume_image(channel_uri="amqp://guest:guest@10.10.35.9:5672", topic="Detector.image"):

@@ -7,11 +7,6 @@ from .detection import Detection
 class torchYOLOv5():
     def __init__(self, model='yolov5s', target_classes=[], thresh_confidence=0.2, nms=True,
                  feature_model=None):
-        """
-        Initializes the class with youtube url and output file.
-        :param url: Has to be as youtube URL,on which prediction is made.
-        :param out_file: A valid output file name.
-        """
         self.labels = None
         self.cord = None
         self.model = self._load_model(model)
@@ -23,13 +18,6 @@ class torchYOLOv5():
         self.thresh_conf = thresh_confidence
         self.NMS = nms
         self.detections = []
-
-        # Extrator de features para rastreio
-        if feature_model is not None:
-            from deep_sort import generate_detections as gdet
-            self.encoder = gdet.create_box_encoder(feature_model, batch_size=1)
-        else:
-            self.encoder = None
 
     def _load_model(self, model):
         """
@@ -54,11 +42,6 @@ class torchYOLOv5():
         return indexes
 
     def detect(self, frame, draw=False):
-        """
-        Takes a single frame as input, and scores the frame using yolo5 model.
-        :param frame: input frame in numpy/list/tuple format.
-        :return: Labels and Coordinates of objects detected by model in the frame.
-        """
         self.model.to(self.device)
         results = self.model([frame])
 
@@ -83,7 +66,7 @@ class torchYOLOv5():
             indexes = indexes[nms_indexes.ravel()]
 
         # Formata detecções
-        features = self.encoder(frame, boxes[indexes]) if self.encoder else [[-1, -1, -1]]*len(indexes)
+        features = [[-1, -1, -1]]*len(indexes)
         self.detections = [
             Detection(
                 id=int(classids[idx]),

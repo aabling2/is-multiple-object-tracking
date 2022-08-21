@@ -4,16 +4,11 @@ import cv2
 import time
 import argparse
 from core.multitracking import IntelligentSpaceMOT
-from core.image import map_cam_image_files
-from yolo.torch_yolo import torchYOLOv5
+from yolov5.core.image import map_cam_image_files
+from msgs import decoder, encoder
 
 
-def main(args):
-    """try:
-        from is_msgs import decoder, encoder
-    except Exception as e:
-        print("PIS modules error:", e)
-        return"""
+def main(args, detector=None):
 
     # Objeto de rastreio
     multicam_tracker = IntelligentSpaceMOT(reid=args.reid)
@@ -23,7 +18,6 @@ def main(args):
 
     scale = 0.5
     delay = 0
-
     args.max_frames += args.jump_frames
 
     for i, samples in enumerate(img_files):
@@ -37,7 +31,7 @@ def main(args):
         start = time.time()
 
         # Obtém imagem
-        #frames = decoder.consume_image()
+        #frames_test = decoder.consume_image()
         frames = [cv2.imread(os.path.join(args.src, filename)) for filename in samples][:args.num_src]
         if scale < 1:
             frames = [cv2.resize(
@@ -72,10 +66,10 @@ def main(args):
         # print("Source:", samples)
 
         if args.measure:
+            print("".center(50, ' '), end='\r')
             print(
-                "-->FPS: {:2.2f}".format(1/(time.time()-start)), "/",
-                "IDs: {:4}".format(multicam_tracker.count_ids),
-                end='\r')
+                " |--> FPS: {:.2f}".format(1/(time.time()-start)), "/",
+                "IDs: {:}".format(multicam_tracker.count_ids), end='\r')
 
         # Key
         key = cv2.waitKey(delay)
@@ -108,8 +102,9 @@ if __name__ == "__main__":
     parser.add_argument("--measure", action='store_true', default=False, help="Métricas em tempo real.")
     args = parser.parse_args()
 
-    # Objeto de detecção
+    # Objeto de detecção com YOLO, subtitui serviço de detecção
+    from yolov5.torch_yolo import torchYOLOv5
     detector = torchYOLOv5(model=args.model, target_classes=['person'], thresh_confidence=0.0, nms=False)
 
     # Framework de detecção e rastreio
-    main(args)
+    main(args, detector=detector)

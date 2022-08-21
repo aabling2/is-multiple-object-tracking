@@ -16,7 +16,7 @@ class IntelligentSpaceMOT():
     def _init_mem(self, num_src):
         # Inicia objeto de reidentificação
         if self.reid is True:
-            from re_id.correlation import CrossCorrelationID
+            from reid.correlation import CrossCorrelationID
             self.reid = CrossCorrelationID(threshold=0.3, qtd=num_src)  # ReID multicam
 
         # Rastreadores com ReID embutido

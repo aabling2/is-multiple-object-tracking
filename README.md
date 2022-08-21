@@ -24,9 +24,6 @@ MOT (Multiple Object Tracking) integrado ao PIS (Programmable Intelligent Space)
 - [x] Desenvolver framework de testes, usando Yolov5, DeepSORT e alguns métodos básicos para reidentificação de objetos rastreados.
 - [x] Baixar dataset do PIS e montar leitura dos frames simultâneos.
 - [x] Desenvolver método de rastreio que trate por padrão re-identificação em multiplas câmeras.
-- [ ] Desenvolver código que faça o consumo e fornecimento das mensagens contendo images, bounding boxes, labels, etc.
 - [x] Desenvolver código para anotação de vídeo, para as câmeras do PIS.
-- [ ] Fazer anotação das imagens do dataset para usar em benchmarks.
-- [ ] Desenvolver benchmark com métricas de desempenho que contemple avaliação de rastreio e re-identificação.
-- [ ] Melhorar metódo de rastreio para cumprir o objetivo de rastreio e re-identificação em multiplas câmeras.
+- [ ] Desenvolver código que faça o consumo e fornecimento das mensagens contendo images, bounding boxes, labels, etc.
 - [ ] Desenvolver código para embarcar aplicação como serviço do PIS.
