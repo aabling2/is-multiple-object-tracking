@@ -164,8 +164,7 @@ class STrack(object):
 
 
 class BYTETracker(object):
-    def __init__(self, frame_rate=30, track_thresh=0.5, track_buffer=30, match_tresh=0.8, fuse=False,
-                 reid=None, src_id=0):
+    def __init__(self, frame_rate=30, track_thresh=0.5, track_buffer=30, match_tresh=0.8, fuse=False, src_id=0):
         self.tracked_stracks = []  # type: list[STrack]
         self.lost_stracks = []  # type: list[STrack]
         self.removed_stracks = []  # type: list[STrack]
@@ -181,8 +180,6 @@ class BYTETracker(object):
 
         self.tracks = []
         self.src_id = src_id
-        self.reid = reid
-
         self._count = 0
 
     @property
@@ -292,14 +289,12 @@ class BYTETracker(object):
             removed_stracks.append(track)
 
         """ Step 4: Init new stracks"""
-        new_tracks = []  #para ReID
         for inew in u_detection:
             track = detections[inew]
             if track.score < self.det_thresh:
                 continue
             track.activate(self.kalman_filter, self.frame_id, new_id=self.next_id)
             activated_starcks.append(track)
-            new_tracks.append(track)
         """ Step 5: Update state"""
         for track in self.lost_stracks:
             if self.frame_id - track.end_frame > self.max_time_lost:
@@ -307,14 +302,6 @@ class BYTETracker(object):
                 removed_stracks.append(track)
 
         # print('Ramained match {} s'.format(t4-t3))
-
-        """ Multicam ReID """
-        #Faz associação para reidentificação de detecções
-        if self.reid is not None:
-            re_ids = [t.track_id for t in new_tracks]
-            new_ids = self.reid.associate(new_tracks, self.src_id, range(len(new_tracks)), re_ids)
-            for t, id in zip(new_tracks, new_ids):
-                t.track_id = id
 
         self.tracked_stracks = [t for t in self.tracked_stracks if t.state == TrackState.Tracked]
         self.tracked_stracks = joint_stracks(self.tracked_stracks, activated_starcks)
@@ -327,7 +314,7 @@ class BYTETracker(object):
         # get scores of lost tracks
         output_stracks = [track for track in self.tracked_stracks if track.is_activated]
 
-        #Atualiza trackers
+        # Atualiza trackers
         self.tracks = self.tracked_stracks
 
         return output_stracks

@@ -2,9 +2,9 @@
 import os
 import cv2
 import argparse
+from .torch_yolo import torchYOLOv5
 from msgs import encoder
 from core.image import map_cam_image_files
-from .torch_yolo import torchYOLOv5
 
 
 def main(args, detector=None):
@@ -41,15 +41,15 @@ def main(args, detector=None):
         # Obtém detecções feitas pelo detector
         detections = [detector.detect(frame) for frame in frames]
 
+        # Objetos de saída do rastreio
+        if args.publish:
+            encoder.publish_image(frames=frames)
+            encoder.publish_annotation(objects=detector.detections)
+
         # Desenha detecções
         for j, det in enumerate(detections):
             detector.detections = det
             detector.draw(frames[j])
-
-        # Objetos de saída do rastreio
-        if args.publish:
-            encoder.publish_image(frames=frames)
-            # encoder.publish_annotation(objects=detector.detections)
 
         # Results
         if len(frames) <= 2:
@@ -58,7 +58,7 @@ def main(args, detector=None):
             output = cv2.vconcat([
                 cv2.hconcat(src=frames[0:2]),
                 cv2.hconcat(src=frames[2:4])])
-        cv2.imshow("Result", output)
+        cv2.imshow("Detector", output)
 
         if args.verbose:
             print("Source:", samples)

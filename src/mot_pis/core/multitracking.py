@@ -4,43 +4,30 @@ from bytetrack.tracker import BYTETracker
 
 
 class IntelligentSpaceMOT():
-    def __init__(self, reid=False):
+    def __init__(self, num_src=1):
 
         self.trackers = None  # Rastreadores
         self.ids = []  # ids multicâmera
         self.labels = []  # labels conforme classes
         self.bboxes = []  # bbox multicâmera
-        self.reid = None if reid is False else True
         self.count_ids = 0
+        self._init_mem(num_src)
 
     def _init_mem(self, num_src):
-        # Inicia objeto de reidentificação
-        if self.reid is True:
-            from reid.correlation import CrossCorrelationID
-            self.reid = CrossCorrelationID(threshold=0.3, qtd=num_src)  # ReID multicam
 
         # Rastreadores com ReID embutido
         self.trackers = [
             BYTETracker(
-                frame_rate=30, track_thresh=0.5, track_buffer=30, match_tresh=0.9, fuse=True,
-                reid=self.reid, src_id=i)
+                frame_rate=30, track_thresh=0.5, track_buffer=30, match_tresh=0.9, fuse=True, src_id=i)
             for i in range(num_src)]
 
-    def update(self, frames, detections):
-
-        # Inicia rastreadores
-        if self.trackers is None:
-            self._init_mem(len(frames))
-
-        # Atualização global reid
-        if self.reid is not None:
-            self.reid.update_global(frames, self.trackers)
+    def update(self, detections):
 
         # Atualiza tracking de cada imagem
         ids = []
         labels = []
         bboxes = []
-        for tracker, img, dets in zip(self.trackers, frames, detections):
+        for tracker, dets in zip(self.trackers, detections):
             tracker.update(dets)
             ids.append([t.track_id for t in tracker.tracks])
             labels.append([t.label for t in tracker.tracks])
