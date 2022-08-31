@@ -3,7 +3,7 @@ import cv2
 import time
 import argparse
 from core.multitracking import IntelligentSpaceMOT
-from msgs import decoder, encoder
+from pis import decoder, encoder
 
 
 def main(args):
