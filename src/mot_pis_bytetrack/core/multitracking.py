@@ -3,7 +3,7 @@ import numpy as np
 from bytetrack.tracker import BYTETracker
 
 
-class IntelligentSpaceMOT():
+class MulticamBYTETracker():
     def __init__(self, num_src=1):
 
         self.trackers = None  # Rastreadores
@@ -11,14 +11,12 @@ class IntelligentSpaceMOT():
         self.labels = []  # labels conforme classes
         self.bboxes = []  # bbox multicâmera
         self.count_ids = 0
-        self._init_mem(num_src)
 
-    def _init_mem(self, num_src):
-
-        # Rastreadores com ReID embutido
+        # Rastreadores
         self.trackers = [
             BYTETracker(
-                frame_rate=30, track_thresh=0.5, track_buffer=30, match_tresh=0.9, fuse=True, src_id=i)
+                frame_rate=30, track_thresh=0.5, track_buffer=30,
+                match_tresh=0.9, fuse=True, src_id=i)
             for i in range(num_src)]
 
     def update(self, detections):

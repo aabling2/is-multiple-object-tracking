@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cfgmap-object-detector
+  namespace: default
+data:
+  obj-detect: |-
+    {
+    "broker_uri": "amqp://10.10.2.30:30000",
+    "zipkin_uri": "http://10.10.2.30:9411",
+    "weights": "src/is_object_detector/models/yolov5m.pt",
+    "data": "src/is_object_detector/models/coco128.yaml",
+    "gpu_id":2
+    }
+
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: "is-object-detector"
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: is-object-detector
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: zeus
+      hostNetwork: true
+      dnsPolicy: "ClusterFirstWithHostNet"
+      containers:
+        - name: object-detector
+          image: labvisio/is-object-detector:v0.1
+          command: ["python3"]
+          args: ["src/is_object_detector/stream.py", "etc/conf/options.json"]
+          imagePullPolicy: Always
+          resources:
+            limits:
+              cpu: "1"
+              memory: 4096Mi
+          volumeMounts:
+            - name: options
+              mountPath: /is-object-detector/etc/conf/
+      volumes:
+        - name: options
+          configMap:
+            name: cfgmap-object-detector
+            items:
+              - key: obj-detect
+                path: options.json

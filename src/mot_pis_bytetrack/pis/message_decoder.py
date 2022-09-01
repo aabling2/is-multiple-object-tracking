@@ -3,7 +3,7 @@ import numpy as np
 from is_wire.core import Channel, Subscription
 from is_msgs.image_pb2 import Image, ObjectAnnotation
 
-channel = Channel("amqp://guest:guest@localhost:5672")
+channel = Channel("amqp://guest:guest@localhost:5672", exchange="is")
 
 
 def consume_image(topic="Detector.YOLOv5.image", n=1):

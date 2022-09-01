@@ -131,7 +131,6 @@ dmypy.json
 # Custom
 datasets/*
 models/*
-mot-challenge/TrackEval-master
-mot-challenge/data
 tox.ini
 src/mot_pis_ros/yolov5*.pt
+src/mot_pis_tools/data
