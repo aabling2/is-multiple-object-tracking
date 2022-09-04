@@ -4,7 +4,7 @@ from is_wire.core import Channel
 
 class StreamChannel(Channel):
     def __init__(self, uri="amqp://guest:guest@localhost:5672", exchange="is"):
-        super().__init__(uri=uri, exchange='is')
+        super().__init__(uri=uri, exchange=exchange)
 
     def consume_last(self, return_dropped=False):
         dropped = 0

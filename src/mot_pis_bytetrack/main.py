@@ -39,8 +39,8 @@ def main(args):
 
         #teste imagem
         msg, dropped = channel.consume_last(return_dropped=True)
-        im = msg.unpack(Image)
-        im_np = to_np(im)
+        img = msg.unpack(Image)
+        img_np = to_np(img)
         camera_id = get_topic_id(msg.topic)
         print("camera_id", camera_id)
 
@@ -72,14 +72,15 @@ def main(args):
         #encoder.publish_annotation(objects=tracker.tracks)
 
         # Results
-        """if args.show:
+        if args.show:
+            frames = [img]
             if len(frames) <= 2:
                 output = cv2.hconcat(src=frames)
             elif len(frames) <= 4:
                 output = cv2.vconcat([
                     cv2.hconcat(src=frames[0:2]),
                     cv2.hconcat(src=frames[2:4])])
-            cv2.imshow("MOT-PIS", output)"""
+            cv2.imshow("MOT-PIS", output)
 
         if args.measure:
             print("".center(50, ' '), end='\r')
