@@ -30,6 +30,7 @@ def to_image(input_image, encode_format='.jpeg', compression_level=0.8):
     else:
         return Image()
 
+
 def to_objectDetections(objects, names, image):
     obs = ObjectAnnotations()
     for x1, y1, x2, y2, conf, classe in objects:

@@ -14,5 +14,9 @@ class StreamChannel(Channel):
                 # will raise an exceptin when no message remained
                 msg = super().consume(timeout=0.0)
                 dropped += 1
+                print(msg)
+
             except socket.timeout:
-                return (msg, dropped) if return_dropped else msg
+                break
+
+        return (msg, dropped) if return_dropped else msg

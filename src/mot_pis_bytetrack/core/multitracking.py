@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from bytetrack.tracker import BYTETracker
+from mot_pis_bytetrack.bytetrack.tracker import BYTETracker
 
 
 class MulticamBYTETracker():

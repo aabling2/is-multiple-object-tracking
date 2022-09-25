@@ -1,6 +1,6 @@
 import numpy as np
-from bytetrack import matching
-from bytetrack.kalman_filter import KalmanFilter
+from . import matching
+from .kalman_filter import KalmanFilter
 
 
 class TrackState(object):
