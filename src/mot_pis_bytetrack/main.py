@@ -4,7 +4,7 @@ import cv2
 import argparse
 import numpy as np
 from is_wire.core import Logger
-from .core.multitracking import MulticamBYTETracker
+from .core.tracking import MulticamBYTETracker
 from .pis.decoder import MessageConsumer
 
 
@@ -12,7 +12,6 @@ SRC_APPLICATION_NAME = "RandomDetector"
 DST_APPLICATION_NAME = "BYTETrack"
 SERVICE_NAME = f"MultipleObjectTracking.{DST_APPLICATION_NAME}"
 BROKER_URI = "amqp://10.10.2.30:30000"
-# BROKER_URI = "amqp://guest:guest@localhost:5672"
 
 
 def main(args):
@@ -21,8 +20,11 @@ def main(args):
     log = Logger(name=SERVICE_NAME)
 
     # Decoder de mensages
+    ids = args.ids.split(',')
     src_streamer = MessageConsumer(
-        broker=BROKER_URI, main_topic=SRC_APPLICATION_NAME, ids=["*"], logger=log)
+        name=SERVICE_NAME,
+        # broker=BROKER_URI,
+        main_topic=SRC_APPLICATION_NAME, ids=ids, logger=log)
 
     # Encoder de mensages
     """ids = range(args.max_src)
@@ -30,46 +32,46 @@ def main(args):
         broker=BROKER_URI, main_topic=SRC_APPLICATION_NAME, ids=ids, logger=log)"""
 
     # Objeto de rastreio em multiplas câmeras
-    # tracker = MulticamBYTETracker(num_src=args.max_src)
+    multi_tracker = MulticamBYTETracker(num_src=len(ids), refs=ids)
 
     # Variáveis
     delay = 0
-    frame_ids = {}
-    count_drops = 0
+    targets = ['Frame', 'Annotation'] if args.show else ['Annotation']
 
-    while src_streamer.status is True:
+    while src_streamer.status is True and src_streamer.drops < 100:
 
         # Obtém imagem
-        frame, id = src_streamer.consume_image()
-        if frame is None:
-            log.info(f"No available frame for id {id}")
-            count_drops += 1
+        id, frame, detections = src_streamer.consume(targets)
+        if id is None:
+            continue
 
-        # Results
-        else:
-            frame_ids[id] = frame
+        # Atualização de rastreio
+        """if detections is not None:
+            #atualizar no rastreador correto pelo id, adicionar rastreador se não existir na lista de ids
+            log.info(f"Detections: {detections}")"""
+
+        # Resultados no frame
+        if frame is not None:
+
+            output = frame.copy()
+            if args.draw:
+                multi_tracker.draw(frames=[output], refs=[id])
+
             if args.show:
-                frames = frame_ids.values()
-                if len(frames) <= 2:
-                    output = cv2.hconcat(src=frames)
-                elif len(frames) <= 4:
-                    output = cv2.vconcat([
-                        cv2.hconcat(src=frames[0:2]),
-                        cv2.hconcat(src=frames[2:4])])
-                cv2.imshow("BYTETrack", output)
+                cv2.imshow(f"BYTETrack-{id}", output)
 
-        # Key
-        key = cv2.waitKey(delay)
-        if key == 27 or count_drops > 10:  # ESC
-            break
+                # Key
+                key = cv2.waitKey(delay)
+                if key == 27:  # ESC
+                    cv2.destroyAllWindows()
+                    break
 
-        elif key == 13:  # Enter
-            delay = 10
+                elif key == 13:  # Enter
+                    delay = 10
 
-        elif key == 32:  # Espaço
-            delay = 0
+                elif key == 32:  # Espaço
+                    delay = 0
 
-    cv2.destroyAllWindows()
     log.info("Finish")
 
 
@@ -77,8 +79,9 @@ if __name__ == "__main__":
 
     # Argumentos de entrada
     parser = argparse.ArgumentParser(description="Multicam BYTETracker for Programable Intelligent Space")
-    parser.add_argument("--max_src", type=int, default=1, help="Quantidade máxima de fontes de vídeo aceitáveis.")
+    parser.add_argument("--ids", type=str, default="0", help="IDs das fontes de consumo (* para todos tópicos).")
     parser.add_argument("--show", action='store_true', default=False, help="Exibe janela das imagens resultantes.")
+    parser.add_argument("--draw", action='store_true', default=False, help="Desenha objetos rastreados no frame.")
     args = parser.parse_args()
 
     # Framework de detecção e rastreio

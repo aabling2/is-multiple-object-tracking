@@ -13,20 +13,22 @@ class MessagePublisher(BaseMSGS):
         try:
             # Codifica imagem para enviar como mensagem
             img_encode = cv2.imencode(".jpg", frame)[1]
-            image.data = img_encode.tobytes()
             image.uri = src
+            image.data = img_encode.tobytes()
 
             message.pack(image)
             self.channel.publish(message, topic=topic)
 
         except socket.timeout:
             if self.log:
+                self.drops += 1
                 self.log.info("error: socket timeout")
 
             return False
 
         except Exception as e:
             if self.log:
+                self.drops += 1
                 self.log.info(f"error: {e}")
 
             return False
@@ -34,10 +36,10 @@ class MessagePublisher(BaseMSGS):
         else:
             return True
 
-    def publish_annotations(self, detections, width, height, id="*"):
+    def publish_detections(self, detections, width, height, id="*"):
         message = Message()
         annotations = ObjectAnnotations()
-        topic = id if id == '*' else f"{self.main_topic}.{id}.Frame"
+        topic = id if id == '*' else f"{self.main_topic}.{id}.Annotation"
         try:
             # Adiciona informações das detecções às anotações
             annotations.resolution.width = width
@@ -60,12 +62,14 @@ class MessagePublisher(BaseMSGS):
 
         except socket.timeout:
             if self.log:
+                self.drops += 1
                 self.log.info("error: socket timeout")
 
             return False
 
         except Exception as e:
             if self.log:
+                self.drops += 1
                 self.log.info(f"error: {e}")
 
             return False

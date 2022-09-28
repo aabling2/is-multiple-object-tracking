@@ -4,29 +4,41 @@ from mot_pis_bytetrack.bytetrack.tracker import BYTETracker
 
 
 class MulticamBYTETracker():
-    def __init__(self, num_src=1):
+    def __init__(self, num_src=1, refs=[]):
 
         self.trackers = None  # Rastreadores
         self.ids = []  # ids multicâmera
         self.labels = []  # labels conforme classes
         self.bboxes = []  # bbox multicâmera
+        self.trackers = []
         self.count_ids = 0
+        self.N = num_src
+        self.map_ids = []
 
-        # Rastreadores
-        self.trackers = [
-            BYTETracker(
+        #revisar essa parte de criação e mapeamento dos indices com id dos tópicos
+        for i in range(num_src):
+            self._create_trackers(ref=refs[i] if len(refs) > i else i)
+
+    def _create_trackers(self, ref):
+        self.map_ids.append((len(self.trackers), ref))
+        self.trackers.append(BYTETracker(
                 frame_rate=30, track_thresh=0.5, track_buffer=30,
-                match_tresh=0.9, fuse=True, src_id=i)
-            for i in range(num_src)]
+                match_tresh=0.9, fuse=True, src_id=ref))
 
-    def update(self, detections):
+    def update(self, detections, refs=[]):
 
         # Atualiza tracking de cada imagem
         ids = []
         labels = []
         bboxes = []
-        for tracker, dets in zip(self.trackers, detections):
-            tracker.update(dets)
+        for i in range(self.N):
+            # Atualiza tracker
+            tracker = self.trackers[i]
+            dets = detections[i]
+            if dets and i in refs:
+                tracker.update(dets)
+
+            # Atualiza dados
             ids.append([t.track_id for t in tracker.tracks])
             labels.append([t.label for t in tracker.tracks])
             bboxes.append([np.int32(t.tlbr) for t in tracker.tracks])
@@ -37,7 +49,7 @@ class MulticamBYTETracker():
         self.ids = ids
         self.count_ids = max(max([max(x) for x in ids]), self.count_ids) if ids else self.count_ids
 
-    def draw(self, frames, detections=[], font_scale=0.5, font=cv2.FONT_HERSHEY_SIMPLEX):
+    def draw(self, frames, detections=[], font_scale=0.5, font=cv2.FONT_HERSHEY_SIMPLEX, refs=[]):
 
         # Desenha bboxes de rastreio
         font = cv2.FONT_HERSHEY_SIMPLEX

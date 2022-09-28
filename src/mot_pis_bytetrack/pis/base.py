@@ -2,26 +2,28 @@ from is_wire.core import Channel, Subscription
 
 
 class BaseMSGS():
-    def __init__(self, broker="amqp://guest:guest@localhost:5672", exchange="is",
+    def __init__(self, name=None, broker="amqp://guest:guest@localhost:5672", exchange="is",
                  main_topic="CameraGateway", ids=['*'], logger=None):
-        # Canal com broker
+
         self.status = True
         self.main_topic = main_topic  # tópico principal
         self.ids = ids
         self.log = logger
+        self.drops = 0
+
         try:
-            self.channel = Channel(broker, exchange=exchange)
+            self.channel = Channel(uri=broker, exchange=exchange)
 
             # Subscrição para consumo de frames
             self.frame_subscriptions = {
-                f"{main_topic}.{stp}.Frame": Subscription(self.channel)
-                for stp in ids}
+                f"{main_topic}.{i}.Frame": Subscription(channel=self.channel, name=name)
+                for i in ids}
             self._subscribe(self.frame_subscriptions)
 
             # Subscrição para consumo de anotações
             self.annotation_subscriptions = {
-                f"{main_topic}.{stp}.Annotation": Subscription(self.channel)
-                for stp in ids}
+                f"{main_topic}.{i}.Annotation": Subscription(channel=self.channel, name=name)
+                for i in ids}
             self._subscribe(self.annotation_subscriptions)
 
             if self.log:

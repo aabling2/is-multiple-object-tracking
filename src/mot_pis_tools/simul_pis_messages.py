@@ -4,14 +4,14 @@ import cv2
 import argparse
 import numpy as np
 from is_wire.core import Logger
-from mot_pis_bytetrack.pis.encoder import MessagePublisher
 from mot_pis_bytetrack.core.detection import Detection
+from mot_pis_bytetrack.pis.encoder import MessagePublisher
+from mot_pis_bytetrack.pis.decoder import MessageConsumer
 
 
 APPLICATION_NAME = "RandomDetector"
 SERVICE_NAME = f"VideoDetector.{APPLICATION_NAME}"
 BROKER_URI = "amqp://10.10.2.30:30000"
-# BROKER_URI = "amqp://guest:guest@localhost:5672"
 POSSIBLE_LABELS = ['person', 'car', 'unknown']
 
 
@@ -25,9 +25,17 @@ def main(args):
     ids = range(len(sources))
     log.info(f"Source video from: {sources}")
 
-    # Encoder de mensages
+    # Encoder de mensages para frames e detecções
     streamer = MessagePublisher(
-        broker=BROKER_URI, main_topic=APPLICATION_NAME, ids=ids, logger=log)
+        name=SERVICE_NAME,
+        # broker=BROKER_URI,
+        main_topic=APPLICATION_NAME, ids=ids, logger=log)
+
+    # Decoder de mensagens para exibição
+    results = MessageConsumer(
+        name=SERVICE_NAME,
+        # broker=BROKER_URI,
+        main_topic=APPLICATION_NAME, ids=ids, logger=log)
 
     # Abre captura de vídeo
     caps = [cv2.VideoCapture(src) for src in sources]
@@ -52,15 +60,14 @@ def main(args):
             # Redimensiona imagem
             dsize = frame.shape[:2][::-1]
             frame = cv2.resize(frame, np.int32(np.int32(dsize)*args.scale))
-            random_detections = [Detection(seed=i, labels=POSSIBLE_LABELS) for i in range(5)]
+            random_detections = [Detection(seed=j, labels=POSSIBLE_LABELS) for j in range(5)]
 
-            # Obtém anotação do detector
+            # Publica dados do frame e detecções
             streamer.publish_frame(frame, ids[i], src=sources[i])
-            streamer.publish_annotations(detections=random_detections, width=dsize[0], height=dsize[1])
+            streamer.publish_detections(detections=random_detections, width=dsize[0], height=dsize[1])
 
             # Results
-            if args.show:
-                cv2.imshow(sources[i], frame)
+            cv2.imshow(sources[i], frame)
 
         # Key
         key = cv2.waitKey(delay)
@@ -84,7 +91,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--source", type=str, default="~/Videos/video1.mp4", help='Fonte de vídeo. Use "," para multiplos.')
     parser.add_argument("--scale", type=float, default=0.5, help="Escala para redimensionamento.")
-    parser.add_argument("--show", action='store_true', default=False, help="Exibe janela das imagens resultantes.")
     args = parser.parse_args()
 
     # Framework de detecção e rastreio
