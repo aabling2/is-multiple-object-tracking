@@ -22,7 +22,7 @@ def main(args):
 
     # Fontes de vídeo e tópicos
     sources = [src.replace('~', os.environ.get('HOME')) for src in args.source.split(',')]
-    ids = range(len(sources))
+    ids = range(1, len(sources)+1)
     log.info(f"Source video from: {sources}")
 
     # Encoder de mensages para frames e detecções

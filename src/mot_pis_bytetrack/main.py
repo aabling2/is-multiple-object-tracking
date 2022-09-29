@@ -32,7 +32,7 @@ def main(args):
         broker=BROKER_URI, main_topic=SRC_APPLICATION_NAME, ids=ids, logger=log)"""
 
     # Objeto de rastreio em multiplas câmeras
-    multi_tracker = MulticamBYTETracker(num_src=len(ids), refs=ids)
+    multi_tracker = MulticamBYTETracker(refs=ids)
 
     # Variáveis
     delay = 0
