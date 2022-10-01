@@ -4,7 +4,7 @@ import cv2
 import argparse
 import numpy as np
 from is_wire.core import Logger
-from mot_pis_bytetrack.core.detection import Detection
+from mot_pis_bytetrack.core.detection import RandomDetector
 from mot_pis_bytetrack.pis.encoder import MessagePublisher
 from mot_pis_bytetrack.pis.decoder import MessageConsumer
 
@@ -39,6 +39,11 @@ def main(args):
 
     # Abre captura de vídeo
     caps = [cv2.VideoCapture(src) for src in sources]
+    dsizes = [(cap.get(3), cap.get(4)) for cap in caps]
+    rsizes = [(int(ds[0]*args.scale), int(ds[1]*args.scale)) for ds in dsizes]
+
+    # Detecções geradas aleatóriamente para testes
+    random_detector = [RandomDetector(max_width=rs[0], max_height=rs[1], qtd=1) for rs in rsizes]
 
     # Variáveis
     delay = 0
@@ -58,15 +63,15 @@ def main(args):
                 break
 
             # Redimensiona imagem
-            dsize = frame.shape[:2][::-1]
-            frame = cv2.resize(frame, np.int32(np.int32(dsize)*args.scale))
-            random_detections = [Detection(seed=j, labels=POSSIBLE_LABELS) for j in range(5)]
+            frame = cv2.resize(frame, rsizes[i])
+            detections = random_detector[i].update()
 
             # Publica dados do frame e detecções
             streamer.publish_frame(frame, ids[i], src=sources[i])
-            streamer.publish_detections(detections=random_detections, width=dsize[0], height=dsize[1])
+            streamer.publish_detections(detections=detections, width=rsizes[i][0], height=rsizes[i][1])
 
             # Results
+            random_detector[i].draw(frame)
             cv2.imshow(sources[i], frame)
 
         # Key
