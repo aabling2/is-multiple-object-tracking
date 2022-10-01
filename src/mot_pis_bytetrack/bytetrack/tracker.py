@@ -21,9 +21,11 @@ class STrack(object):
         self.mean, self.covariance = None, None
         self.is_activated = False
 
+        self.id = 0
         self.score = score
         self.tracklet_len = 0
         self.label = label
+        self.bbox = tlwh
 
         self.track_id = 0
         self.state = TrackState.New
@@ -89,14 +91,18 @@ class STrack(object):
         """
         self.frame_id = frame_id
         self.tracklet_len += 1
-
         new_tlwh = new_track.tlwh
         self.mean, self.covariance = self.kalman_filter.update(
             self.mean, self.covariance, self.tlwh_to_xyah(new_tlwh))
         self.state = TrackState.Tracked
         self.is_activated = True
-
+        self.id = self.track_id
         self.score = new_track.score
+        self.bbox = new_tlwh
+
+    def to_tlbr(self, bbox=[]):
+        x, y, w, h = self.bbox.copy() if bbox == [] else bbox
+        return [x, y, x+w, y+h]
 
     @property
     # @jit(nopython=True)
@@ -194,7 +200,7 @@ class BYTETracker(object):
         lost_stracks = []
         removed_stracks = []
 
-        scores = np.float32([d.confidence for d in detections])
+        scores = np.float32([d.score for d in detections])
         bboxes = np.float32([d.to_tlbr() for d in detections])
         labels = np.array([d.label for d in detections])
 

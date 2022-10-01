@@ -2,15 +2,13 @@
 import os
 import cv2
 import argparse
-import numpy as np
 from is_wire.core import Logger
 from mot_pis_bytetrack.core.detection import RandomDetector
 from mot_pis_bytetrack.pis.encoder import MessagePublisher
-from mot_pis_bytetrack.pis.decoder import MessageConsumer
 
 
 APPLICATION_NAME = "RandomDetector"
-SERVICE_NAME = f"VideoDetector.{APPLICATION_NAME}"
+SERVICE_NAME = f"MultipleObjectTracking.{APPLICATION_NAME}"
 BROKER_URI = "amqp://10.10.2.30:30000"
 POSSIBLE_LABELS = ['person', 'car', 'unknown']
 
@@ -26,13 +24,7 @@ def main(args):
     log.info(f"Source video from: {sources}")
 
     # Encoder de mensages para frames e detecções
-    streamer = MessagePublisher(
-        name=SERVICE_NAME,
-        # broker=BROKER_URI,
-        main_topic=APPLICATION_NAME, ids=ids, logger=log)
-
-    # Decoder de mensagens para exibição
-    results = MessageConsumer(
+    dst_streamer = MessagePublisher(
         name=SERVICE_NAME,
         # broker=BROKER_URI,
         main_topic=APPLICATION_NAME, ids=ids, logger=log)
@@ -43,12 +35,14 @@ def main(args):
     rsizes = [(int(ds[0]*args.scale), int(ds[1]*args.scale)) for ds in dsizes]
 
     # Detecções geradas aleatóriamente para testes
-    random_detector = [RandomDetector(max_width=rs[0], max_height=rs[1], qtd=1) for rs in rsizes]
+    random_detector = [
+        RandomDetector(max_width=rs[0], max_height=rs[1], qtd=1, min_score=0.5)
+        for rs in rsizes]
 
     # Variáveis
     delay = 0
 
-    while streamer.status is True:
+    while dst_streamer.status is True:
 
         for i, cap in enumerate(caps):
 
@@ -59,7 +53,7 @@ def main(args):
             ret, frame = cap.read()
             if not ret or frame is None:
                 log.info("No available frame")
-                streamer.status = False
+                dst_streamer.status = False
                 break
 
             # Redimensiona imagem
@@ -67,8 +61,8 @@ def main(args):
             detections = random_detector[i].update()
 
             # Publica dados do frame e detecções
-            streamer.publish_frame(frame, ids[i], src=sources[i])
-            streamer.publish_detections(detections=detections, width=rsizes[i][0], height=rsizes[i][1])
+            dst_streamer.publish_frame(frame, ids[i])
+            dst_streamer.publish_detections(detections=detections, id=ids[i], width=rsizes[i][0], height=rsizes[i][1])
 
             # Results
             random_detector[i].draw(frame)
@@ -80,7 +74,7 @@ def main(args):
             break
 
         elif key == 13:  # Enter
-            delay = 10
+            delay = 50
 
         elif key == 32:  # Espaço
             delay = 0
@@ -98,5 +92,5 @@ if __name__ == "__main__":
     parser.add_argument("--scale", type=float, default=0.5, help="Escala para redimensionamento.")
     args = parser.parse_args()
 
-    # Framework de detecção e rastreio
+    # Framework de detecção
     main(args)

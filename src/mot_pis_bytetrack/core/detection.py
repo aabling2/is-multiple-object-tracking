@@ -10,17 +10,22 @@ class Detection():
     bbox: list
     velocity: tuple
 
-    @property
-    def tlbr(self):
-        x, y, w, h = self.bbox.copy()
+    def to_tlbr(self, bbox=[]):
+        x, y, w, h = self.bbox.copy() if bbox == [] else bbox
         return [x, y, x+w, y+h]
+
+    @staticmethod
+    def to_tlwh(tlbr):
+        x1, y1, x2, y2 = tlbr
+        return [x1, y1, x2-x1, y2-y1]
 
 
 class RandomDetector():
-    def __init__(self, max_width, max_height, qtd=1, labels=['person', 'car']):
+    def __init__(self, max_width, max_height, qtd=1, labels=['person', 'car'], min_score=0.2):
         self.max_width = int(max_width)
         self.max_height = int(max_height)
         self.labels = labels
+        self.min_score = min_score
         self.curr_id = 0
         self.detections = [self.generate_detection() for _ in range(qtd)]
 
@@ -33,7 +38,7 @@ class RandomDetector():
         detection = Detection()
         detection.id = self.curr_id
         detection.label = random.choice(labels)
-        detection.score = random.uniform(0.2, 1.0)
+        detection.score = random.uniform(self.min_score, 1.0)
 
         x = random.randint(0, max_width)
         y = random.randint(0, max_height)
@@ -60,26 +65,19 @@ class RandomDetector():
 
         return self.detections
 
-    def draw(self, frame, font_scale=0.5, font=cv2.FONT_HERSHEY_SIMPLEX):
+    def draw(self, frame, font_scale=0.4, font=cv2.FONT_HERSHEY_SIMPLEX):
         # Desenha bboxes de rastreio
         for detection in self.detections:
-            sid = str(detection.id)
-            label = detection.label
-            box = detection.tlbr
+            label = detection.label + f"-{int(detection.score*100)}%"
+            box = detection.to_tlbr()
             np.random.seed(detection.id)
             color = [np.random.randint(0, 255) for _ in range(3)]
-            label_size = cv2.getTextSize(label+" ", 0, fontScale=font_scale, thickness=1)[0]
-            id_size = cv2.getTextSize(sid, 0, fontScale=font_scale*1.3, thickness=1)[0]
+            label_size = cv2.getTextSize(label, 0, fontScale=font_scale, thickness=1)[0]
 
             # Bounding box
             cv2.rectangle(frame, box[:2], box[2:4], color, 2)
 
             # Label
-            pt1, pt2 = (box[0]-1, box[1] + 20), (box[0] + label_size[0] + id_size[0] + 1, box[1])
+            pt1, pt2 = (box[0]-1, box[1] + 20), (box[0] + label_size[0] + 1, box[1])
             cv2.rectangle(frame, pt1, pt2, color, -1)
-            cv2.putText(frame, label, (box[0], box[1] + 8), font, font_scale, (0, 0, 0))
-
-            # ID de referência do objeto
-            pt1, pt2 = (box[0] + label_size[0] + 1, box[1] + 19), (box[0] + label_size[0] + id_size[0], box[1] - 1)
-            cv2.rectangle(frame, pt1, pt2, (50, 50, 50), -1)
-            cv2.putText(frame, sid, (pt1[0], pt2[1]+15), font, font_scale*1.3, (255, 255, 255))
+            cv2.putText(frame, label, (box[0], box[1] + 12), font, font_scale, (0, 0, 0))
