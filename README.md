@@ -33,6 +33,13 @@ MOT (Multiple Object Tracking) integrado ao PIS (Programmable Intelligent Space)
 
 Iniciar conexão com broker que será o meio de troca de mensagens entre detector, rastreio e saída dos dados.
 
+### Instalar dependências
+
+```
+cd src
+pip3 install -r requirements.txt
+```
+
 ### Conexão com broker
 
 ```
@@ -67,6 +74,5 @@ python -m mot_pis_tools.simul_endpoint  # --draw se o frame não vier com os des
 
 ```
 # Simula fornecimento de imagem e anotação atráves de vídeo local e detecções artificiais
-cd src
 python -m mot_pis_tools.simul_detector --source ~/Videos/video1.mp4,~/Videos/video2.mp4
 ```
