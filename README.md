@@ -67,7 +67,7 @@ python -m mot_pis_bytetrack.main --show --draw
 
 ```
 # Simula obtenção dos dados do rastreio e exibe vídeo na janela com a representação dos objetos
-python -m mot_pis_tools.simul_endpoint  # --draw se o frame não vier com os desenhos já
+python -m mot_pis_tools.simul_viewer  # --draw para desenhar anotações sobre a imagem se necessário
 ```
 
 ### Gerar stream de vídeo e detecções randômicas para alimentar sistema
