@@ -8,16 +8,16 @@ from mot_pis_bytetrack.core.detection import Detection
 
 
 class MessageConsumer(BaseMSGS):
-    def _catch_topic(self, topic="CameraGateway.1.Frame", targets=[]):
-        id, target = None, None
-        for t in targets:
-            result = re.search(pattern=rf'{self.main_topic}.(.*?).{t}', string=topic)
+    def _catch_topic_id(self, topic="CameraGateway.1.Frame"):
+        id = None
+        for t in [self.frame_topic, self.annot_topic]:
+            pattern = t.replace('*', '(.*?)')
+            result = re.search(pattern=rf'{pattern}', string=topic)
             if result:
                 id = int(result.group(1))
-                target = t
                 break
 
-        return id, target
+        return id
 
     # Decodifica imagem para frame
     def _decode_image(self, message):
@@ -41,20 +41,21 @@ class MessageConsumer(BaseMSGS):
 
         return detections
 
-    def consume(self, targets=['Frame', 'Annotation']):
+    def consume(self):
         id, frame, detections = None, None, None
         try:
             # Consome mensagem
             message = self.channel.consume(timeout=0.0)
 
             # Segmenta tópico para destinar dados e decodificação (Frame | Annotation)
-            id, target = self._catch_topic(message.topic, targets)
+            id = self._catch_topic_id(message.topic)
 
             # Decodifica mensagens
-            if target == 'Frame':
+            base_topic = message.topic.replace(f".{id}.", ".*.")
+            if base_topic in self.frame_subscriptions:
                 frame = self._decode_image(message)
 
-            elif target == 'Annotation':
+            elif base_topic in self.annotation_subscriptions:
                 detections = self._decode_annotation(message)
 
         except socket.timeout:

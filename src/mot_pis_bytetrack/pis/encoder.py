@@ -9,7 +9,7 @@ class MessagePublisher(BaseMSGS):
     def publish_frame(self, frame, id):
         message = Message()
         image = Image()
-        topic = f"{self.main_topic}.{id}.Frame"
+        topic = self.frame_topic.replace('*', str(id))
         try:
             # Codifica imagem para enviar como mensagem
             img_encode = cv2.imencode(".jpg", frame)[1]
@@ -38,7 +38,7 @@ class MessagePublisher(BaseMSGS):
     def publish_detections(self, detections, id, width, height):
         message = Message()
         annotations = ObjectAnnotations()
-        topic = f"{self.main_topic}.{id}.Annotation"
+        topic = self.annot_topic.replace('*', str(id))
         try:
             # Adiciona informações das detecções às anotações
             for det in detections:

@@ -3,28 +3,34 @@ from is_wire.core import Channel, Subscription
 
 class BaseMSGS():
     def __init__(self, name=None, broker="amqp://guest:guest@localhost:5672", exchange="is",
-                 main_topic="CameraGateway", ids=['*'], logger=None):
+                 ids=['*'], frame_topic="", annotation_topic="",
+                 logger=None):
 
         self.status = True
-        self.main_topic = main_topic  # tópico principal
-        self.ids = ids
         self.log = logger
         self.drops = 0
+        self.ids = ids
+        self.frame_topic = frame_topic  # tópico para consumo dos frames
+        self.annot_topic = annotation_topic  # tópico para consumo das anotações
 
         try:
             self.channel = Channel(uri=broker, exchange=exchange)
+            self.frame_subscriptions = {}
+            self.annotation_subscriptions = {}
 
             # Subscrição para consumo de frames
-            self.frame_subscriptions = {
-                f"{main_topic}.{i}.Frame": Subscription(channel=self.channel, name=name)
-                for i in ids}
-            self._subscribe(self.frame_subscriptions)
+            if frame_topic:
+                self.frame_subscriptions = {
+                    f"{frame_topic.replace('*', str(i))}": Subscription(channel=self.channel, name=name)
+                    for i in ids}
+                self._subscribe(self.frame_subscriptions)
 
             # Subscrição para consumo de anotações
-            self.annotation_subscriptions = {
-                f"{main_topic}.{i}.Annotation": Subscription(channel=self.channel, name=name)
-                for i in ids}
-            self._subscribe(self.annotation_subscriptions)
+            if annotation_topic:
+                self.annotation_subscriptions = {
+                    f"{annotation_topic.replace('*', str(i))}": Subscription(channel=self.channel, name=name)
+                    for i in ids}
+                self._subscribe(self.annotation_subscriptions)
 
             if self.log:
                 self.log.info(f"Successful connection with broker: {broker}")

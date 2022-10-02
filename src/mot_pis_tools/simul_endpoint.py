@@ -2,29 +2,28 @@
 import cv2
 import argparse
 from is_wire.core import Logger
-from mot_pis_bytetrack.pis.decoder import MessageConsumer
+from mot_pis_bytetrack.core. config import *
 from mot_pis_bytetrack.core.drawings import draw_tracks
-
-
-SRC_APPLICATION_NAME = "BYTETrack"
-DST_APPLICATION_NAME = "VideoEndpoint"
-SERVICE_NAME = f"MultipleObjectTracking.{DST_APPLICATION_NAME}"
-BROKER_URI = "amqp://10.10.2.30:30000"
+from mot_pis_bytetrack.pis.decoder import MessageConsumer
 
 
 def main(args):
 
     # Serviço
-    log = Logger(name=SERVICE_NAME)
+    service_name = f"{SERVICE_NAME}.VideoEndpoint"
+    log = Logger(name=service_name)
+
+    # Define broker
+    broker_uri = PIS_BROKER_URI if args.broker == "pis" else args.custom_broker
 
     # Fontes de vídeo e tópicos
     ids = [int(x) for x in args.ids.split(',')] if args.ids != "*" else ["*"]
 
     # Encoder de mensages para frames e detecções
     src_streamer = MessageConsumer(
-        name=SERVICE_NAME,
-        # broker=BROKER_URI,
-        main_topic=SRC_APPLICATION_NAME, ids=ids, logger=log)
+        name=service_name, broker=broker_uri, ids=ids, logger=log,
+        frame_topic=args.src_frame_topic,
+        annotation_topic=args.src_annotation_topic)
 
     # Variáveis
     delay = 1
@@ -34,7 +33,7 @@ def main(args):
     while src_streamer.status is True:
 
         # Obtém imagem
-        id, frame, tracks = src_streamer.consume(targets=['Frame', 'Annotation'])
+        id, frame, tracks = src_streamer.consume()
         if id is not None:
             if tracks is not None:
                 detection_tracks[id] = tracks
@@ -72,6 +71,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Multicam BYTETracker for Programable Intelligent Space")
     parser.add_argument("--ids", type=str, default="*", help="IDs das fontes de consumo (* para todos tópicos).")
     parser.add_argument("--draw", action='store_true', default=False, help="Desenha objetos rastreados no frame.")
+    parser.add_argument("--broker", type=str, default="pis", choices=['pis', 'custom'], help="Escolha do broker.")
+    parser.add_argument("--custom_broker", type=str, default="amqp://guest:guest@localhost:5672", help="URI amqp do broker (default is_wire).")
+    parser.add_argument("--src_frame_topic", type=str, default="BYTETrack.*.Frame", help="Tópico fonte dos frames.")
+    parser.add_argument("--src_annotation_topic", type=str, default="BYTETrack.*.Tracklets", help="Tópico fonte das detecções.")
     args = parser.parse_args()
 
     # Framework de exibição de resultados

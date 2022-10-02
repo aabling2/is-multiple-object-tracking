@@ -36,7 +36,7 @@ Iniciar conexão com broker que será o meio de troca de mensagens entre detecto
 ### Conexão com broker
 
 ```
-# Broker docker simulado
+# Broker docker simulado (is-wire)
 sudo docker run -d --rm -p 5672:5672 -p 15672:15672 rabbitmq:3.7.6-management
 ```
 
@@ -48,21 +48,21 @@ sudo openvpn /etc/openvpn/client/client.conf
 ### Testar algoritmo principal de rasteio de múltiplos objetos em múltiplas câmeras
 
 ```
-# Roda script principal de rastreio
+# Roda script principal de rastreio, --help para parâmetros extras
 python -m mot_pis_bytetrack.main
 
-# Rastreio com exibição e desenho das regiões, habilita consumo e publicação de imagem, *atrasando consumo das mensagens
+# Rastreio com exibição e desenho das regiões, habilita consumo e publicação de imagem, *atrasa recebimento das anotações
 python -m mot_pis_bytetrack.main --show --draw
 ```
 
-### Simulação de visualizador de vídeo dos resultados vindos do rastreio
+### Simulação de visualizador de vídeo dos resultados do rastreio
 
 ```
 # Simula obtenção dos dados do rastreio e exibe vídeo na janel com a representação dos objetos
 python -m mot_pis_tools.simul_endpoint  # --draw se o frame não vier com os desenhos já
 ```
 
-### Simulação de stream de vídeo e detector de objetos
+### Simulação de stream de vídeo e gerador de detecções randômico para anotações
 
 ```
 # Simula fornecimento de imagem e anotação atráves de vídeo local e detecções artificiais
