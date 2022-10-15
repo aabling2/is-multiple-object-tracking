@@ -15,6 +15,8 @@ Seguindo o conceito e formato de mensagens conforme a biblioteca is-msgs, esta a
 
 ### Instalar dependências
 
+* Requisitos: Python3 (3.6; 3.8) e instalador de pacotes Pip.
+
 ```bash
 cd src
 pip3 install Cython numpy  # presente no requirements mas é requisitado previamente
