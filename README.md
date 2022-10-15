@@ -1,78 +1,67 @@
-# mot-pis-ros
+# MOT-PIS-ROS
 
 MOT (Multiple Object Tracking) integrado ao PIS (Programmable Intelligent Space) com ROS (Robot Operating System).
 
+## MOT-PIS-BYTETrack
 
-## Objetivos
+Serviço de rastreio de múltiplos objetos em múltiplas câmeras, integrado ao sistema de comunicação via espaço inteligete. A aplicação foi baseada na metodologia de rastreio [BYTETrack](https://github.com/ifzhang/ByteTrack), para o funcionamento correto, como o artigo menciona, é necessário utilizar TODAS detecções feitas pelo detector (incluindo de score baixo).
 
-- Criar framework de testes para múltiplas câmeras
-    - Detector/classificador (Aiury)
-    - Rastreio (MOT)
-    - Análise e atribuição de objetos entre imagens (MultiCAM Re-ID)
-    - Reconstrução do ponto central do objeto no espaço 3D
-- Atacar componentes para melhorias
-    - MOT
-    - Re-ID multicam
-    - Reconstrução 3D
-- Desenvolver serviço(s) para retorno da posição/classe do objeto rastreado.
-    - Acessar câmeras PIS
-    - Adequar comunicação com PIS e/ou ROS
-    - Adequar como serviço
+Seguindo o conceito e formato de mensagens conforme a biblioteca is-msgs, esta aplicação tem suporte a fornecer os dados de anotação dos objetos rastreados e o frame renderizado com a representação das mesmas anotações.
 
-## Metas
+### Funcionamento
 
-- [x] Desenvolver framework de testes, usando Yolov5, DeepSORT e alguns métodos básicos para reidentificação de objetos rastreados.
-- [x] Baixar dataset do PIS e montar leitura dos frames simultâneos.
-- [x] Desenvolver método de rastreio que trate por padrão re-identificação em multiplas câmeras.
-- [x] Desenvolver código para anotação de vídeo, para as câmeras do PIS.
-- [x] Desenvolver código que faça o consumo e fornecimento das mensagens contendo images, bounding boxes, labels, etc.
-- [ ] Desenvolver código para embarcar aplicação como serviço do PIS.
-
-
-## Ambiente de testes
-
-Iniciar conexão com broker que será o meio de troca de mensagens entre detector, rastreio e saída dos dados.
+* Principal: Anotações de algum detector --> MOT-PIS-BYTETrack (lógica de rastreio dos objetos) --> Anotações de rastreio
+* Opcional: Frame de alguma câmera --> MOT-PIS-BYTETrack (renderiza detecções no frame) --> Frame renderizado
 
 ### Instalar dependências
 
-```
+```bash
 cd src
+pip3 install Cython numpy  # presente no requirements mas é requisitado previamente
 pip3 install -r requirements.txt
 ```
 
 ### Conexão com broker
 
-```
+Iniciar conexão com broker que será o meio de troca de mensagens entre detector, rastreio e saída dos dados.
+
+```bash
 # Broker docker simulado (is-wire)
 sudo docker run -d --rm -p 5672:5672 -p 15672:15672 rabbitmq:3.7.6-management
 ```
 
-```
+ou
+
+```bash
 # Broker espaço inteligente (VPN), instruções internas do laboratório para obter arquivo de configuração
-sudo openvpn /etc/openvpn/client/client.conf
+sudo openvpn --config client.conf
 ```
 
 ### Testar algoritmo principal de rastreio de múltiplos objetos em múltiplas câmeras
 
-```
-# Roda script principal de rastreio, --help para parâmetros extras
+```bash
+# Roda script principal de rastreio (apenas consumo e publicação de anotações), --help para parâmetros extras
+# configurações podem ser editadas pelo arquivo options.json em ./etc
 python -m mot_pis_bytetrack.main
 
-# Rastreio com exibição e desenho das regiões, habilita consumo e publicação de imagem
-# *atrasa recebimento das anotações dependendo da frequência do streaming de vídeo consumido
-python -m mot_pis_bytetrack.main --show --draw
+# Rastreio com exibição dos objetos rastreados no frame
+# publicação do frame só acontece se habilitada nas configurações
+python -m mot_pis_bytetrack.main --show
 ```
 
-### Visualizar vídeo dos resultados do rastreio
+### Ferramentas para simular fornecimento e visualização de vídeo e detecções (OPCIONAL)
 
-```
-# Simula obtenção dos dados do rastreio e exibe vídeo na janela com a representação dos objetos
-python -m mot_pis_tools.simul_viewer  # --draw para desenhar anotações sobre a imagem se necessário
-```
+#### Gerar stream de vídeo e detecções randômicas para alimentar sistema
 
-### Gerar stream de vídeo e detecções randômicas para alimentar sistema
-
-```
+```bash
 # Simula fornecimento de imagem e anotação atráves de vídeo local e detecções artificiais
 python -m mot_pis_tools.simul_detector --source ~/Videos/video1.mp4,~/Videos/video2.mp4
+```
+
+#### Visualizar vídeo dos resultados do rastreio
+
+```bash
+# Simula obtenção dos dados do rastreio e exibe vídeo na janela com a representação dos objetos
+# bbox das anotações recebidas em vermelho sobre a imagem renderizada
+python -m mot_pis_tools.simul_viewer
 ```

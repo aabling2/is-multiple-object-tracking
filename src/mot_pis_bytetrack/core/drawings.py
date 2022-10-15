@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 
-def draw_tracks(frame, tracks, font_scale=0.4, font=cv2.FONT_HERSHEY_SIMPLEX):
+def draw_tracks(frame, tracks, font_scale=0.4, font=cv2.FONT_HERSHEY_SIMPLEX, only_bbox=False):
     for t in tracks:
         sid = str(t.id)
         label = t.label
@@ -13,14 +13,17 @@ def draw_tracks(frame, tracks, font_scale=0.4, font=cv2.FONT_HERSHEY_SIMPLEX):
         id_size = cv2.getTextSize(sid, 0, fontScale=font_scale*1.3, thickness=1)[0]
 
         # Bounding box
-        cv2.rectangle(frame, box[:2], box[2:4], color, 2)
+        color = (0, 0, 255) if only_bbox else color
+        thickness = 1 if only_bbox else 2
+        cv2.rectangle(frame, box[:2], box[2:4], color, thickness)
 
-        # Label
-        pt1, pt2 = (box[0]-1, box[1] + 20), (box[0] + label_size[0] + id_size[0] + 1, box[1])
-        cv2.rectangle(frame, pt1, pt2, color, -1)
-        cv2.putText(frame, label, (box[0], box[1] + 10), font, font_scale, (0, 0, 0))
+        if not only_bbox:
+            # Label
+            pt1, pt2 = (box[0]-1, box[1] + 20), (box[0] + label_size[0] + id_size[0] + 1, box[1])
+            cv2.rectangle(frame, pt1, pt2, color, -1)
+            cv2.putText(frame, label, (box[0], box[1] + 10), font, font_scale, (0, 0, 0))
 
-        # ID de referência do objeto
-        pt1, pt2 = (box[0] + label_size[0] + 1, box[1] + 19), (box[0] + label_size[0] + id_size[0], box[1] - 1)
-        cv2.rectangle(frame, pt1, pt2, (50, 50, 50), -1)
-        cv2.putText(frame, sid, (pt1[0], pt2[1]+15), font, font_scale*1.3, (255, 255, 255))
+            # ID de referência do objeto
+            pt1, pt2 = (box[0] + label_size[0] + 1, box[1] + 19), (box[0] + label_size[0] + id_size[0], box[1] - 1)
+            cv2.rectangle(frame, pt1, pt2, (50, 50, 50), -1)
+            cv2.putText(frame, sid, (pt1[0], pt2[1]+15), font, font_scale*1.3, (255, 255, 255))

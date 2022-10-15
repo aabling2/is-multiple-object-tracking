@@ -3,20 +3,29 @@ import os
 import cv2
 import argparse
 from is_wire.core import Logger
-from mot_pis_bytetrack.core.config import *
-from mot_pis_bytetrack.core.detection import RandomDetector
+from .scripts.detection import RandomDetector
+from mot_pis_bytetrack.core.utils import load_json_config
 from mot_pis_bytetrack.pis.encoder import MessagePublisher
+
+
+TOPIC_MAIN_NAME = "ObjectDetector"
+TOPIC_DST_FRAMES = "CameraGateway.*.Frame"  # f"{TOPIC_MAIN_NAME}.*.Rendered"
+TOPIC_DST_ANNOTATIONS = f"{TOPIC_MAIN_NAME}.*.Detection"
 
 
 def main(args):
 
+    # Carrega configurações
+    config = load_json_config(args.config)
+    if config is None:
+        exit()
+
     # Serviço
-    app_name = "ObjectDetector"
-    service_name = f"{SERVICE_NAME}.{app_name}"
+    service_name = f"{config['service_name']}.{TOPIC_MAIN_NAME}"
     log = Logger(name=service_name)
 
     # Define broker
-    broker_uri = PIS_BROKER_URI if args.broker == "pis" else args.custom_broker
+    broker_uri = config['broker_uri']
 
     # Fontes de vídeo e tópicos
     sources = [src.replace('~', os.environ.get('HOME')) for src in args.source.split(',')]
@@ -26,8 +35,8 @@ def main(args):
     # Encoder de mensages para frames e detecções
     dst_streamer = MessagePublisher(
         name=service_name, broker=broker_uri, ids=ids, logger=log,
-        frame_topic=args.dst_frame_topic,
-        annotation_topic=args.dst_annotation_topic)
+        frame_topic=TOPIC_DST_FRAMES,
+        annotation_topic=TOPIC_DST_ANNOTATIONS)
 
     # Abre captura de vídeo
     caps = [cv2.VideoCapture(src) for src in sources]
@@ -87,12 +96,10 @@ if __name__ == "__main__":
 
     # Argumentos de entrada
     parser = argparse.ArgumentParser(description="Simulador de mensagens do PIS, publica frames e anotações de vídeos.")
-    parser.add_argument("--source", type=str, default="~/Videos/video1.mp4", help='Fonte de vídeo. Use "," para multiplos.')
+    parser.add_argument("--config", type=str, default="options.json", help="Arquivo de configurações.")
     parser.add_argument("--scale", type=float, default=0.5, help="Escala para redimensionamento.")
-    parser.add_argument("--broker", type=str, default="pis", choices=['pis', 'custom'], help="Escolha do broker.")
-    parser.add_argument("--custom_broker", type=str, default="amqp://guest:guest@localhost:5672", help="URI amqp do broker (default is_wire).")
-    parser.add_argument("--dst_frame_topic", type=str, default="ObjectDetector.*.Rendered", help="Tópico destino dos frames.")
-    parser.add_argument("--dst_annotation_topic", type=str, default="ObjectDetector.*.Detection", help="Tópico destino das detecções.")
+    parser.add_argument(
+        "--source", type=str, default="~/Videos/video1.mp4", help='Fonte de vídeo. Use "," para multiplos.')
     args = parser.parse_args()
 
     # Framework de detecção

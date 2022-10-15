@@ -2,7 +2,8 @@
 import cv2
 import argparse
 from is_wire.core import Logger
-from .core.config import *
+from ._version import __version__
+from .core.utils import load_json_config
 from .core.tracking import MulticamBYTETracker
 from .pis.decoder import MessageConsumer
 from .pis.encoder import MessagePublisher
@@ -10,31 +11,42 @@ from .pis.encoder import MessagePublisher
 
 def main(args):
 
+    # Carrega configurações
+    config = load_json_config(args.config)
+    if config is None:
+        exit()
+
     # Serviço
-    service_name = f"{SERVICE_NAME}.{TRACKING_APPLICATION_NAME}"
+    service_name = f"{config['service_name']}.{config['topic_main_name']}"
     log = Logger(name=service_name)
+    log.info(f'{service_name}: version {__version__}')
 
     # Define broker
-    broker_uri = PIS_BROKER_URI if args.broker == "pis" else args.custom_broker
+    broker_uri = config['broker_uri']
+
+    # Define consumo e publicação de frames
+    _consume_frames = True if config['publish_dst_frames'] or args.show else False
+    _publish_frames = True if config['publish_dst_frames'] else False
 
     # Decoder de mensages
-    ids = [int(x) for x in args.camera_ids.split(',')] if args.camera_ids != "*" else ["*"]
+    ids = config['camera_ids']
     src_streamer = MessageConsumer(
         name=service_name, broker=broker_uri, logger=log, ids=ids,
-        frame_topic=args.src_frame_topic if args.show or args.draw else "",
-        annotation_topic=args.src_annotation_topic)
+        frame_topic=config['topic_src_frames'] if _consume_frames else "",
+        annotation_topic=config['topic_src_annotations'])
 
     # Encoder de mensages
     dst_streamer = MessagePublisher(
-        broker=broker_uri, ids=ids, logger=log,
-        frame_topic=f"{TRACKING_APPLICATION_NAME}.*.{TRACKING_DST_FRAMES}" if args.draw else "",
-        annotation_topic=f"{TRACKING_APPLICATION_NAME}.*.{TRACKING_DST_ANNOTATIONS}")
+        name=service_name, broker=broker_uri, ids=ids, logger=log,
+        frame_topic=f"{config['topic_main_name']}.*.{config['topic_dst_frames']}" if _publish_frames else "",
+        annotation_topic=f"{config['topic_main_name']}.*.{config['topic_dst_annotations']}")
 
     # Objeto de rastreio em multiplas câmeras
-    multi_tracker = MulticamBYTETracker(refs=ids, track_threshold=args.threshold)
+    multi_tracker = MulticamBYTETracker(
+        refs=ids,
+        track_threshold=config['min_detection_confidence'])
 
     # Variáveis
-    delay = 1
     width, height = None, None
     output = None
     last_id = None
@@ -58,27 +70,22 @@ def main(args):
                 last_id = id
                 width, height = frame.shape[:2][::-1]
 
+                # Desenha objetos rastreados
                 output = frame.copy()
-                if args.draw:
-                    multi_tracker.draw(frames=[output], refs=[id])
+                multi_tracker.draw(frames=[output], refs=[id])
 
-                    # Publica dados do frame
+                # Publica dados do frame
+                if _publish_frames:
                     dst_streamer.publish_frame(output, id)
 
         if args.show and output is not None and last_id is not None:
             cv2.imshow(f"BYTETrack-{last_id}", output)
 
             # Key
-            key = cv2.waitKey(delay)
+            key = cv2.waitKey(1)
             if key == 27:  # ESC
                 cv2.destroyAllWindows()
                 break
-
-            elif key == 13:  # Enter
-                delay = 1
-
-            elif key == 32:  # Espaço
-                delay = 0
 
     log.info("Finish")
 
@@ -87,14 +94,8 @@ if __name__ == "__main__":
 
     # Argumentos de entrada
     parser = argparse.ArgumentParser(description="Multicam BYTETracker for Programable Intelligent Space")
+    parser.add_argument("--config", type=str, default="options.json", help="Arquivo de configurações.")
     parser.add_argument("--show", action='store_true', default=False, help="Exibe janela das imagens resultantes.")
-    parser.add_argument("--draw", action='store_true', default=False, help="Desenha objetos rastreados no frame.")
-    parser.add_argument("--threshold", type=float, default=0.5, help="Threshold de rastreio low/high.")
-    parser.add_argument("--broker", type=str, default="pis", choices=['pis', 'custom'], help="Escolha do broker.")
-    parser.add_argument("--custom_broker", type=str, default="amqp://guest:guest@localhost:5672", help="URI amqp do broker (default is-wire).")
-    parser.add_argument("--src_frame_topic", type=str, default="CameraGateway.*.Frame", help="Tópico fonte dos frames.")
-    parser.add_argument("--src_annotation_topic", type=str, default="ObjectDetector.*.Detection", help="Tópico fonte das detecções.")
-    parser.add_argument("--camera_ids", type=str, default="*", help="IDs dos tópicos fonte (* para todos tópicos).")
     args = parser.parse_args()
 
     # Framework de rastreio

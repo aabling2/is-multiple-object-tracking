@@ -2,28 +2,30 @@
 import cv2
 import argparse
 from is_wire.core import Logger
-from mot_pis_bytetrack.core. config import *
+from mot_pis_bytetrack.core.utils import load_json_config
 from mot_pis_bytetrack.core.drawings import draw_tracks
 from mot_pis_bytetrack.pis.decoder import MessageConsumer
 
 
 def main(args):
 
+    # Carrega configurações
+    config = load_json_config(args.config)
+    if config is None:
+        exit()
+
     # Serviço
-    service_name = f"{SERVICE_NAME}.VideoEndpoint"
+    service_name = f"{config['service_name']}.ObjectViewer"
     log = Logger(name=service_name)
 
     # Define broker
-    broker_uri = PIS_BROKER_URI if args.broker == "pis" else args.custom_broker
-
-    # Fontes de vídeo e tópicos
-    ids = [int(x) for x in args.ids.split(',')] if args.ids != "*" else ["*"]
+    broker_uri = config['broker_uri']
 
     # Encoder de mensages para frames e detecções
     src_streamer = MessageConsumer(
-        name=service_name, broker=broker_uri, ids=ids, logger=log,
-        frame_topic=args.src_frame_topic,
-        annotation_topic=args.src_annotation_topic)
+        name=service_name, broker=broker_uri, ids=["*"], logger=log,
+        frame_topic=f"{config['topic_main_name']}.*.{config['topic_dst_frames']}",
+        annotation_topic=f"{config['topic_main_name']}.*.{config['topic_dst_annotations']}")
 
     # Variáveis
     delay = 1
@@ -42,12 +44,12 @@ def main(args):
             if frame is not None:
                 last_id = id
                 output = frame.copy()
-                if args.draw:
-                    tracks = detection_tracks.get(id) if id in detection_tracks else []
-                    draw_tracks(output, tracks)
+                tracks = detection_tracks.get(id) if id in detection_tracks else []
+                if tracks:
+                    draw_tracks(output, tracks, only_bbox=True)
 
         if output is not None and last_id is not None:
-            cv2.imshow(f"Result-{last_id}", output)
+            cv2.imshow(f"ObjectViewer-{last_id}", output)
 
             # Key
             key = cv2.waitKey(delay)
@@ -68,13 +70,8 @@ def main(args):
 if __name__ == "__main__":
 
     # Argumentos de entrada
-    parser = argparse.ArgumentParser(description="Multicam BYTETracker for Programable Intelligent Space")
-    parser.add_argument("--ids", type=str, default="*", help="IDs das fontes de consumo (* para todos tópicos).")
-    parser.add_argument("--draw", action='store_true', default=False, help="Desenha objetos rastreados no frame.")
-    parser.add_argument("--broker", type=str, default="pis", choices=['pis', 'custom'], help="Escolha do broker.")
-    parser.add_argument("--custom_broker", type=str, default="amqp://guest:guest@localhost:5672", help="URI amqp do broker (default is_wire).")
-    parser.add_argument("--src_frame_topic", type=str, default="BYTETrack.*.Frame", help="Tópico fonte dos frames.")
-    parser.add_argument("--src_annotation_topic", type=str, default="BYTETrack.*.Tracklets", help="Tópico fonte das detecções.")
+    parser = argparse.ArgumentParser(description="Simulador de visualização de vídeo e anotações.")
+    parser.add_argument("--config", type=str, default="options.json", help="Arquivo de configurações.")
     args = parser.parse_args()
 
     # Framework de exibição de resultados

@@ -177,7 +177,7 @@ class BYTETracker(object):
 
         self.frame_id = 0
         self.track_thresh = track_thresh
-        self.det_thresh = track_thresh + 0.1
+        self.det_thresh = track_thresh
         self.match_thresh = match_tresh
         self.fuse = fuse
         self.buffer_size = int(frame_rate / 30.0 * track_buffer)
@@ -317,13 +317,11 @@ class BYTETracker(object):
         self.lost_stracks = sub_stracks(self.lost_stracks, self.removed_stracks)
         self.removed_stracks.extend(removed_stracks)
         self.tracked_stracks, self.lost_stracks = remove_duplicate_stracks(self.tracked_stracks, self.lost_stracks)
-        # get scores of lost tracks
-        output_stracks = [track for track in self.tracked_stracks if track.is_activated]
 
         # Atualiza trackers
         self.tracks = self.tracked_stracks
 
-        return output_stracks
+        return self.tracked_stracks
 
 
 def joint_stracks(tlista, tlistb):
