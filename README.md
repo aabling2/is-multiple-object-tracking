@@ -1,4 +1,4 @@
-# IS-MULTIPLE-OBJECT-TRACKING
+# is-multiple-object-tracking
 
 MOT (Multiple Object Tracking) integrado ao PIS/IS (Programmable Intelligent Space).
 
