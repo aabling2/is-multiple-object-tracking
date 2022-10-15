@@ -15,7 +15,7 @@ Seguindo o conceito e formato de mensagens conforme a biblioteca is-msgs, esta a
 
 ### Instalar dependências
 
-* Requisitos: Python3 (3.6; 3.8) e instalador de pacotes Pip.
+* Requisitos: Python3 (3.6-3.8) e instalador de pacotes Pip.
 
 ```bash
 cd src
