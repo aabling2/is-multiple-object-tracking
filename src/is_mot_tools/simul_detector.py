@@ -4,8 +4,8 @@ import cv2
 import argparse
 from is_wire.core import Logger
 from .scripts.detection import RandomDetector
-from mot_pis_bytetrack.core.utils import load_json_config
-from mot_pis_bytetrack.pis.encoder import MessagePublisher
+from is_mot_bytetrack.core.utils import load_json_config
+from is_mot_bytetrack.pis.encoder import MessagePublisher
 
 
 TOPIC_MAIN_NAME = "ObjectDetector"

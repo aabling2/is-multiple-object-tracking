@@ -1,6 +1,6 @@
 import numpy as np
 from .drawings import draw_tracks
-from mot_pis_bytetrack.bytetrack.tracker import BYTETracker
+from is_mot_bytetrack.bytetrack.tracker import BYTETracker
 
 
 class MulticamBYTETracker():

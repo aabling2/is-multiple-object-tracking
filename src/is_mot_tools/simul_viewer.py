@@ -2,9 +2,9 @@
 import cv2
 import argparse
 from is_wire.core import Logger
-from mot_pis_bytetrack.core.utils import load_json_config
-from mot_pis_bytetrack.core.drawings import draw_tracks
-from mot_pis_bytetrack.pis.decoder import MessageConsumer
+from is_mot_bytetrack.core.utils import load_json_config
+from is_mot_bytetrack.core.drawings import draw_tracks
+from is_mot_bytetrack.pis.decoder import MessageConsumer
 
 
 def main(args):

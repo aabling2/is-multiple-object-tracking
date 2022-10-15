@@ -1,7 +1,7 @@
 import cv2
 import random
 import numpy as np
-from mot_pis_bytetrack.core.detection import Detection
+from is_mot_bytetrack.core.detection import Detection
 
 
 class RandomDetector():

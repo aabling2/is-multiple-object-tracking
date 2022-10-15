@@ -4,7 +4,7 @@ import socket
 import numpy as np
 from is_msgs.image_pb2 import Image, ObjectAnnotations
 from .base import BaseMSGS
-from mot_pis_bytetrack.core.detection import Detection
+from is_mot_bytetrack.core.detection import Detection
 
 
 class MessageConsumer(BaseMSGS):

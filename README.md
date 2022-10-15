@@ -1,8 +1,8 @@
-# MOT-PIS-ROS
+# IS-MULTIPLE-OBJECT-TRACKING
 
-MOT (Multiple Object Tracking) integrado ao PIS (Programmable Intelligent Space) com ROS (Robot Operating System).
+MOT (Multiple Object Tracking) integrado ao PIS/IS (Programmable Intelligent Space).
 
-## MOT-PIS-BYTETrack
+## MOT-BYTETrack Service
 
 Serviço de rastreio de múltiplos objetos em múltiplas câmeras, integrado ao sistema de comunicação via espaço inteligete. A aplicação foi baseada na metodologia de rastreio [BYTETrack](https://github.com/ifzhang/ByteTrack), para o funcionamento correto, como o artigo menciona, é necessário utilizar TODAS detecções feitas pelo detector (incluindo de score baixo).
 
@@ -10,8 +10,8 @@ Seguindo o conceito e formato de mensagens conforme a biblioteca is-msgs, esta a
 
 ### Funcionamento
 
-* Principal: Anotações de algum detector --> MOT-PIS-BYTETrack (lógica de rastreio dos objetos) --> Anotações de rastreio
-* Opcional: Frame de alguma câmera --> MOT-PIS-BYTETrack (renderiza detecções no frame) --> Frame renderizado
+* Principal: Anotações de algum detector --> MOT-BYTETrack (lógica de rastreio dos objetos) --> Anotações de rastreio
+* Opcional: Frame de alguma câmera --> MOT-BYTETrack (renderiza detecções no frame) --> Frame renderizado
 
 ### Instalar dependências
 
@@ -42,11 +42,11 @@ sudo openvpn --config client.conf
 ```bash
 # Roda script principal de rastreio (apenas consumo e publicação de anotações), --help para parâmetros extras
 # configurações podem ser editadas pelo arquivo options.json em ./etc
-python -m mot_pis_bytetrack.main
+python -m is_mot_bytetrack.main
 
 # Rastreio com exibição dos objetos rastreados no frame
 # publicação do frame só acontece se habilitada nas configurações
-python -m mot_pis_bytetrack.main --show
+python -m is_mot_bytetrack.main --show
 ```
 
 ### Ferramentas para simular fornecimento e visualização de vídeo e detecções (OPCIONAL)
@@ -55,7 +55,7 @@ python -m mot_pis_bytetrack.main --show
 
 ```bash
 # Simula fornecimento de imagem e anotação atráves de vídeo local e detecções artificiais
-python -m mot_pis_tools.simul_detector --source ~/Videos/video1.mp4,~/Videos/video2.mp4
+python -m is_mot_tools.simul_detector --source ~/Videos/video1.mp4,~/Videos/video2.mp4
 ```
 
 #### Visualizar vídeo dos resultados do rastreio
@@ -63,5 +63,5 @@ python -m mot_pis_tools.simul_detector --source ~/Videos/video1.mp4,~/Videos/vid
 ```bash
 # Simula obtenção dos dados do rastreio e exibe vídeo na janela com a representação dos objetos
 # bbox das anotações recebidas em vermelho sobre a imagem renderizada
-python -m mot_pis_tools.simul_viewer
+python -m is_mot_tools.simul_viewer
 ```
