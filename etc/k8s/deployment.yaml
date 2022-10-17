@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cfgmap-object-tracker
+  namespace: default
+data:
+  obj-tracker: |-
+    {
+    "broker_uri": "amqp://10.10.2.30:30000",
+    "service_name": "ObjectTracking",
+    "topic_main_name": "BYTETrack",
+    "topic_dst_frames": "Frame",
+    "topic_dst_annotations": "Tracklets",
+    "topic_src_frames": "CameraGateway.*.Frame",
+    "topic_src_annotations": "ObjectDetector.*.Detection",
+    "camera_ids": ["*"],
+    "min_detection_confidence": 0.5,
+    "publish_dst_frames": true
+    }
+
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: "is-object-tracker"
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: is-object-tracker
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: zeus
+      hostNetwork: true
+      dnsPolicy: "ClusterFirstWithHostNet"
+      containers:
+        - name: object-tracker
+          image: labvisio/is-multiple-object-tracker:0.1
+          command: ["is-multiple-object-tracker"]
+          args: ["etc/conf/options.json"]
+          imagePullPolicy: Always
+          resources:
+            limits:
+              cpu: "1"
+              memory: 4096Mi
+          volumeMounts:
+            - name: options
+              mountPath: /is-multiple-object-tracking/etc/conf/
+      volumes:
+        - name: options
+          configMap:
+            name: cfgmap-object-tracker
+            items:
+              - key: obj-tracker
+                path: options.json
