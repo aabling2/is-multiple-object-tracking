@@ -49,7 +49,7 @@ class MulticamBYTETracker():
                 tracks.append(tracker.tracks)
 
                 # Atualiza variáveis
-                self.ids[idx] = [t.track_id for t in tracker.tracks]
+                self.ids[idx] = [t.id for t in tracker.tracks]
                 self.labels[idx] = [t.label for t in tracker.tracks]
                 self.bboxes[idx] = [np.int32(t.tlbr) for t in tracker.tracks]
 
