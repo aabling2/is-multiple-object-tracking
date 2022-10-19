@@ -21,13 +21,12 @@ class STrack(object):
         self.mean, self.covariance = None, None
         self.is_activated = False
 
-        self.id = 0
         self.score = score
         self.tracklet_len = 0
         self.label = label
         self.bbox = tlwh
 
-        self.track_id = 0
+        self.id = 0
         self.state = TrackState.New
         self.start_frame = 0
         self.frame_id = 0
@@ -58,7 +57,7 @@ class STrack(object):
     def activate(self, kalman_filter, frame_id, new_id):
         """Start a new tracklet"""
         self.kalman_filter = kalman_filter
-        self.track_id = new_id
+        self.id = new_id
         self.mean, self.covariance = self.kalman_filter.initiate(self.tlwh_to_xyah(self._tlwh))
 
         self.tracklet_len = 0
@@ -78,7 +77,7 @@ class STrack(object):
         self.is_activated = True
         self.frame_id = frame_id
         if new_id:
-            self.track_id = self.next_id
+            self.id = self.next_id
         self.score = new_track.score
 
     def update(self, new_track, frame_id):
@@ -96,7 +95,6 @@ class STrack(object):
             self.mean, self.covariance, self.tlwh_to_xyah(new_tlwh))
         self.state = TrackState.Tracked
         self.is_activated = True
-        self.id = self.track_id
         self.score = new_track.score
         self.bbox = new_tlwh
 
@@ -156,7 +154,7 @@ class STrack(object):
         return ret
 
     def __repr__(self):
-        return 'OT_{}_({}-{})'.format(self.track_id, self.start_frame, self.end_frame)
+        return 'OT_{}_({}-{})'.format(self.id, self.start_frame, self.end_frame)
 
     @property
     def end_frame(self):
@@ -328,10 +326,10 @@ def joint_stracks(tlista, tlistb):
     exists = {}
     res = []
     for t in tlista:
-        exists[t.track_id] = 1
+        exists[t.id] = 1
         res.append(t)
     for t in tlistb:
-        tid = t.track_id
+        tid = t.id
         if not exists.get(tid, 0):
             exists[tid] = 1
             res.append(t)
@@ -341,9 +339,9 @@ def joint_stracks(tlista, tlistb):
 def sub_stracks(tlista, tlistb):
     stracks = {}
     for t in tlista:
-        stracks[t.track_id] = t
+        stracks[t.id] = t
     for t in tlistb:
-        tid = t.track_id
+        tid = t.id
         if stracks.get(tid, 0):
             del stracks[tid]
     return list(stracks.values())
