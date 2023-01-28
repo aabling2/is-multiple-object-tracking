@@ -12,7 +12,6 @@ idna==3.4
 is-msgs==1.1.16
 is-wire==1.2.0
 lap==0.4.0
-numpy==1.23.3
 opencensus==0.5.0
 opencensus-context==0.1.0
 opencv-python==4.6.0.66
