@@ -1,0 +1,12 @@
+{
+    "broker_uri": "amqp://guest:guest@localhost:5672",
+    "service_name": "ObjectTracking",
+    "topic_main_name": "BYTETrack",
+    "topic_dst_frames": "Frame",
+    "topic_dst_annotations": "Tracklets",
+    "topic_src_frames": "CameraGateway.*.Frame",
+    "topic_src_annotations": "ObjectDetector.*.Detection",
+    "camera_ids": ["*"],
+    "min_detection_confidence": 0.5,
+    "publish_dst_frames": false
+}

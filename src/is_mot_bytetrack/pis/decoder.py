@@ -11,11 +11,14 @@ class MessageConsumer(BaseMSGS):
     def _catch_topic_id(self, topic="CameraGateway.1.Frame"):
         id = None
         for t in [self.frame_topic, self.annot_topic]:
-            pattern = t.replace('*', '(.*?)')
-            result = re.search(pattern=rf'{pattern}', string=topic)
+            result = re.findall(r"\.(.*?)\.", topic)
             if result:
-                id = int(result.group(1))
-                break
+                try:
+                    id = int(result[0])
+                    break
+
+                except Exception as e:
+                    self.log.info(f"error: {e}")
 
         return id
 
