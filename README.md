@@ -45,10 +45,6 @@ sudo openvpn --config client.conf
 # Roda script principal de rastreio (apenas consumo e publicação de anotações), --help para parâmetros extras
 # configurações podem ser editadas pelo arquivo options.json em ./etc
 python -m is_mot_bytetrack.main
-
-# Rastreio com exibição dos objetos rastreados no frame
-# publicação do frame só acontece se habilitada nas configurações
-python -m is_mot_bytetrack.main --show
 ```
 
 ### Ferramentas para simular fornecimento e visualização de vídeo e detecções (OPCIONAL)

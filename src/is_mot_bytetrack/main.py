@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-import cv2
 import sys
-import argparse
 from is_wire.core import Logger
 from ._version import __version__
 from .core.utils import load_json_config
@@ -51,7 +49,6 @@ def main():
     # Variáveis
     width, height = None, None
     output = None
-    last_id = None
 
     while src_streamer.status is True and src_streamer.drops < 100:
 
@@ -69,7 +66,6 @@ def main():
 
             # Resultados no frame
             if frame is not None:
-                last_id = id
                 width, height = frame.shape[:2][::-1]
 
                 # Desenha objetos rastreados
@@ -85,12 +81,5 @@ def main():
 
 if __name__ == "__main__":
 
-    # Argumentos de entrada
-    # parser = argparse.ArgumentParser(description="Multicam BYTETracker for Programable Intelligent Space")
-    # parser.add_argument("--config", type=str, default="options.json", help="Arquivo de configurações.")
-    # parser.add_argument("--show", action='store_true', default=False, help="Exibe janela das imagens resultantes.")
-    # args = parser.parse_args()
-
-    # # Framework de rastreio
-    # main(args)
+    # Framework de rastreio
     main()
